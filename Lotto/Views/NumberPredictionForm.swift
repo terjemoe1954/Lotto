@@ -26,6 +26,7 @@ struct NumberPredictionForm: View {
     ) = ([:], [:], [:])
     @State private var isLoading = true
     @State private var isPresentingPrintDialog = false
+    @State private var rowForTransfer: SuggestedRow?
     @State private var saveMessage: String?
     @State private var errorMessage: String?
 
@@ -124,7 +125,8 @@ struct NumberPredictionForm: View {
                             SuggestedRowCard(
                                 index: index + 1,
                                 row: row,
-                                onSave: { saveSuggestedRow(row) }
+                                onSave: { saveSuggestedRow(row) },
+                                onTransfer: { rowForTransfer = row }
                             )
                         }
                     }
@@ -180,6 +182,12 @@ struct NumberPredictionForm: View {
                 completion: {
                     isPresentingPrintDialog = false
                 }
+            )
+        }
+        .sheet(item: $rowForTransfer) { row in
+            MyLotteryView(
+                initialDrawDate: selectedDate,
+                initialNumbers: row.numbers
             )
         }
     }
@@ -269,6 +277,7 @@ private struct SuggestedRowCard: View {
     let index: Int
     let row: SuggestedRow
     let onSave: () -> Void
+    let onTransfer: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -281,11 +290,19 @@ private struct SuggestedRowCard: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Lagre") {
-                    onSave()
+                HStack {
+                    Button("Levere") {
+                        onTransfer()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+
+                    Button("Lagre") {
+                        onSave()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
             }
 
             Text(row.numbers.map { String(format: "%02d", $0) }.joined(separator: "  "))

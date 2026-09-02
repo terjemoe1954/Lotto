@@ -197,8 +197,7 @@ extension FindWinnerView {
 extension FindWinnerView {
     /// Normalizes a date to year-month-day (no time).
     func normalize(_ date: Date) -> Date {
-        let comps = Calendar.current.dateComponents([.year, .month, .day], from: date)
-        return Calendar.current.date(from: comps) ?? date
+        LottoDateSupport.normalize(date)
     }
     
     /// Runs the comparison for the selected date and updates the UI.
@@ -226,15 +225,7 @@ extension FindWinnerView {
             
             
             let comps: [ResultComparison] = results.map { result in
-                let matched = Set(result.numbers).intersection(Set(jackpot.numbers)).sorted()
-                let matchedExtra = (jackpot.extraNumber != nil && result.numbers.contains(jackpot.extraNumber!)) ? jackpot.extraNumber : nil
-                return ResultComparison(
-                    id: "\(result.id)-\(jackpot.date.timeIntervalSince1970)",
-                    result: result,
-                    jackpot: jackpot,
-                    matchedNumbers: matched,
-                    matchedExtraNumber: matchedExtra
-                )
+                LottoWinnerLogic.comparison(for: result, against: jackpot)
             }
             
             await MainActor.run {

@@ -13,11 +13,13 @@ import SwiftData
 struct NumberCountsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @AppStorage(LottoAppPreferences.excludeHighestGapKey) private var excludeHighestGapFromAverage = false
     @State private var counts: [Int: Int] = [:]
     @State private var averageDaysBetween: [Int: Double] = [:]
     @State private var lastDatePerNumber: [Int: Date] = [:]
     @State private var nextDatePerNumber: [Int: Date] = [:]
     @State private var isPresentingPrintDialog = false
+    @State private var errorMessage: String?
     
     var body: some View {
         NavigationStack {
@@ -32,6 +34,13 @@ struct NumberCountsView: View {
                 }
             
             Text("Antall Number: \(sortedCounts.count)")
+
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .padding(.horizontal)
+            }
             
             List {
                 ForEach(sortedCounts, id: \.0) { number, count in
@@ -103,182 +112,38 @@ struct NumberCountsView: View {
                     }
                 )
             }
+            .onChange(of: excludeHighestGapFromAverage) { _, _ in
+                loadCounts()
+            }
         }
     }
     
     
     /// Returns the week number (1-53) for the given date.
     func getWeekNumber(from date: Date) -> Int {
-        let calendar = Calendar.current
-        // Returns 1-53
-        return calendar.component(.weekOfYear, from: date)
+        LottoDateSupport.weekNumber(for: date)
     }
-    
-    /// Counts occurrences for numbers 1-34.
-    func frequencyForNumbers1to34(in numbers: [Int]) -> [Int: Int] {
-        var counts: [Int: Int] = [:]
-        for number in numbers {
-            if (1...34).contains(number) {
-                counts[number, default: 0] += 1
-            }
-        }
-        return counts
-    }
-    
-    /// Computes average days between occurrences per number.
-    func averageDayGapsPerNumber(from jackpots: [JackPot]) -> [Int: Double] {
-        var appearances: [Int: [Date]] = [:]
-        for jackpot in jackpots {
-            let date = jackpot.dato
-            let nums = [jackpot.nr1, jackpot.nr2, jackpot.nr3, jackpot.nr4,
-                        jackpot.nr5, jackpot.nr6, jackpot.nr7, jackpot.nr8]
-            for n in nums where (1...34).contains(n) {
-                appearances[n, default: []].append(date)
-            }
-        }
-        
-        var result: [Int: Double] = [:]
-        let calendar = Calendar.current
-        
-        for (number, dates) in appearances {
-            let sorted = dates.sorted()
-            guard sorted.count >= 2 else { continue }
-            
-            var gaps: [Double] = []
-            for i in 1..<sorted.count {
-                let d1 = sorted[i-1]
-                let d2 = sorted[i]
-                if let days = calendar.dateComponents([.day], from: d1, to: d2).day {
-                    gaps.append(Double(days))
-                }
-            }
-            
-            if !gaps.isEmpty {
-                // NEW: Handle outliers - use trimmed mean or median
-                let avg = trimmedAverage(gaps: gaps) // or use median(gaps)
-                result[number] = avg
-            }
-        }
-        return result
-    }
-    
-    // MARK: - Outlier-resistant average calculations
-    /// Trims outliers before averaging.
-    private func trimmedAverage(gaps: [Double]) -> Double {
-        let sortedGaps = gaps.sorted()
-        let count = sortedGaps.count
-        
-        // Remove top/bottom 20% as outliers (minimum 1 gap each side)
-        let trimCount = max(1, count / 5)
-        let startIndex = trimCount
-        let endIndex = count - trimCount
-        
-        let trimmedGaps = Array(sortedGaps[startIndex..<endIndex])
-        return trimmedGaps.reduce(0, +) / Double(trimmedGaps.count)
-    }
-    
-    /// Median for a list of gaps.
-    private func median(gaps: [Double]) -> Double {
-        let sortedGaps = gaps.sorted()
-        let count = sortedGaps.count
-        
-        if count % 2 == 0 {
-            let mid1 = sortedGaps[count/2 - 1]
-            let mid2 = sortedGaps[count/2]
-            return (mid1 + mid2) / 2.0
-        } else {
-            return sortedGaps[count/2]
-        }
-    }
-    
-    /// Summarizes stats per number.
-    func statsPerNumber(from jackpots: [JackPot]) -> (
-        avgGaps: [Int: Double],
-        lastDates: [Int: Date]
-    ) {
-        var appearances: [Int: [Date]] = [:]
-        
-        for jackpot in jackpots {
-            let date = jackpot.dato
-            let nums = [jackpot.nr1, jackpot.nr2, jackpot.nr3, jackpot.nr4,
-                        jackpot.nr5, jackpot.nr6, jackpot.nr7, jackpot.nr8]
-            for n in nums where (1...34).contains(n) {
-                appearances[n, default: []].append(date)
-            }
-        }
-        
-        var avgGaps: [Int: Double] = [:]
-        var lastDates: [Int: Date] = [:]
-        let calendar = Calendar.current
-        
-        for (number, dates) in appearances {
-            let sorted = dates.sorted()
-            lastDates[number] = sorted.last
-            
-            guard sorted.count >= 2 else { continue }
-            
-            var gaps: [Double] = []
-            for i in 1..<sorted.count {
-                let d1 = sorted[i-1]
-                let d2 = sorted[i]
-                if let days = calendar.dateComponents([.day], from: d1, to: d2).day {
-                    gaps.append(Double(days))
-                }
-            }
-            
-            if !gaps.isEmpty {
-                // Use trimmed average instead of simple mean
-                avgGaps[number] = trimmedAverage(gaps: gaps)
-                // Alternative: avgGaps[number] = median(gaps: gaps)
-            }
-        }
-        return (avgGaps, lastDates)
-    }
-    
-    
-    
     
     /// Loads stats and updates the view.
     private func loadCounts() {
         do {
             let descriptor = FetchDescriptor<JackPot>()
             let jackpots = try context.fetch(descriptor)
-            let stats = statsPerNumber(from: jackpots)
+            let stats = LottoStatistics.statsPerNumber(
+                from: jackpots,
+                excludeHighestGapFromAverage: excludeHighestGapFromAverage
+            )
             self.averageDaysBetween = stats.avgGaps
             self.lastDatePerNumber = stats.lastDates
-            
-            // Computes predicted next date per number.
-            var predicted: [Int: Date] = [:]
-            let calendar = Calendar.current
-            for (number, lastDate) in stats.lastDates {
-                if let avgDays = stats.avgGaps[number] {
-                    // Use at least 1 day and round to nearest whole day
-                    let stepDays = max(1, Int(avgDays.rounded()))
-                    var candidate = calendar.date(byAdding: .day, value: stepDays, to: lastDate)
-                    let now = Date()
-                    // Advance in whole average-day steps until strictly after now
-                    while let c = candidate, c <= now {
-                        candidate = calendar.date(byAdding: .day, value: stepDays, to: c)
-                    }
-                    if let c = candidate {
-                        // Normalize to start of the next day to avoid "present date"
-                        if let startOfDay = calendar.startOfDay(for: c) as Date?,
-                           let nextDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) {
-                            predicted[number] = nextDay
-                        } else {
-                            predicted[number] = c
-                        }
-                    }
-                }
-            }
-            self.nextDatePerNumber = predicted
-            let numbers = jackpots.flatMap { jackpot in
-                [jackpot.nr1, jackpot.nr2, jackpot.nr3, jackpot.nr4,
-                 jackpot.nr5, jackpot.nr6, jackpot.nr7, jackpot.nr8]
-            }
-            counts = frequencyForNumbers1to34(in: numbers)
+            self.nextDatePerNumber = LottoStatistics.nextDatesPerNumber(
+                avgGaps: stats.avgGaps,
+                lastDates: stats.lastDates,
+                advancingPast: Date()
+            )
+            counts = LottoStatistics.frequency(for: jackpots)
+            errorMessage = nil
         } catch {
-            print("Failed to load counts: \(error)")
+            errorMessage = "Kunne ikke laste statistikk: \(error.localizedDescription)"
         }
     }
     /// Print-friendly view of number stats.
@@ -362,7 +227,7 @@ struct NumberCountsView: View {
                                 if let next = nextDatePerNumber[number] {
                                     Text(next, style: .date)
                                         .frame(width: 100, alignment: .trailing)
-                                    let weekNumber = Calendar.current.component(.weekOfYear, from: next)
+                                    let weekNumber = LottoDateSupport.weekNumber(for: next)
                                     Text("\(weekNumber)")
                                         .frame(width: 40, alignment: .trailing)
                                         .fontWeight(.semibold)
@@ -422,7 +287,7 @@ struct NumberCountsView: View {
                                     if let next = nextDatePerNumber[number] {
                                         Text(next, style: .date)
                                             .frame(width: 100, alignment: .trailing)
-                                        let weekNumber = Calendar.current.component(.weekOfYear, from: next)
+                                        let weekNumber = LottoDateSupport.weekNumber(for: next)
                                         Text("\(weekNumber)")
                                             .frame(width: 40, alignment: .trailing)
                                             .fontWeight(.semibold)
@@ -451,4 +316,3 @@ struct NumberCountsView: View {
 #Preview {
     NumberCountsView()
 }
-

@@ -64,6 +64,42 @@ enum LottoRules {
     static func shouldSeedJackpots(didSeedJackpots: Bool, existingCount: Int) -> Bool {
         !didSeedJackpots && existingCount == 0
     }
+
+    static func missingSeedJackpots(seedJackpots: [JackPot], existingDates: [Date]) -> [JackPot] {
+        let normalizedExistingDates = Set(existingDates.map(LottoDateSupport.normalize))
+        return seedJackpots.filter { jackpot in
+            !normalizedExistingDates.contains(LottoDateSupport.normalize(jackpot.dato))
+        }
+    }
+
+    static func duplicateJackpots(in jackpots: [JackPot]) -> [JackPot] {
+        var keeperByDate: [Date: JackPot] = [:]
+        var duplicates: [JackPot] = []
+
+        for jackpot in jackpots {
+            let normalizedDate = LottoDateSupport.normalize(jackpot.dato)
+            if let currentKeeper = keeperByDate[normalizedDate] {
+                if jackpotQualityScore(jackpot) > jackpotQualityScore(currentKeeper) {
+                    duplicates.append(currentKeeper)
+                    keeperByDate[normalizedDate] = jackpot
+                } else {
+                    duplicates.append(jackpot)
+                }
+            } else {
+                keeperByDate[normalizedDate] = jackpot
+            }
+        }
+
+        return duplicates
+    }
+
+    private static func jackpotQualityScore(_ jackpot: JackPot) -> Int {
+        let numbers = [jackpot.nr1, jackpot.nr2, jackpot.nr3, jackpot.nr4, jackpot.nr5, jackpot.nr6, jackpot.nr7, jackpot.nr8]
+        let validUniqueCount = Set(numbers.filter(validNumberRange.contains)).count
+        let nonZeroCount = numbers.filter { $0 != 0 }.count
+        let hasWeekNumber = jackpot.weekNr > 0 ? 1 : 0
+        return (validUniqueCount * 100) + (nonZeroCount * 10) + hasWeekNumber
+    }
 }
 
 enum LottoWinnerLogic {

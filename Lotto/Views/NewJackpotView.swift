@@ -24,6 +24,7 @@ struct NewJackpotView: View {
     
     private enum Field: Hashable { case nr1, nr2, nr3, nr4, nr5, nr6, nr7 , nr8}
     @FocusState private var focusedField: Field?
+    @State private var errorMessage: String?
     
     @State private var jackpot: JackPot = JackPot(
         dato: Date(),
@@ -31,6 +32,31 @@ struct NewJackpotView: View {
         nr5: 0, nr6: 0, nr7: 0, nr8: 0,
         weekNr: 0
     )
+
+    private var enteredNumbers: [Int] {
+        [nr1Text, nr2Text, nr3Text, nr4Text, nr5Text, nr6Text, nr7Text, nr8Text]
+            .compactMap(Int.init)
+    }
+
+    private var hasDuplicateNumbers: Bool {
+        enteredNumbers.count != Set(enteredNumbers).count
+    }
+
+    private var hasJackpotOnSelectedDate: Bool {
+        validationMessage == "Det finnes allerede en trekning registrert på denne datoen."
+    }
+
+    private var canSaveJackpot: Bool {
+        enteredNumbers.count == 8 && validationMessage == nil
+    }
+
+    private var validationMessage: String? {
+        LottoRules.jackpotValidationMessage(
+            numbers: enteredNumbers,
+            drawDate: jackpot.dato,
+            existingDates: jackpots.map(\.dato)
+        )
+    }
     
     private var intFormatter: NumberFormatter {
         let f = NumberFormatter()
@@ -51,7 +77,7 @@ struct NewJackpotView: View {
                         do {
                             try deleteAll(of: JackPot.self, in: context)
                         } catch {
-                            // TODO: show an error to the user.
+                            errorMessage = "Kunne ikke slette trekningene: \(error.localizedDescription)"
                         }
                     }
                     .foregroundStyle(.red)
@@ -73,7 +99,7 @@ struct NewJackpotView: View {
                                 .keyboardType(.numberPad)
                                 .submitLabel(.next)
                                 .focused($focusedField, equals: .nr1)
-                                .onChange(of: nr1Text) { nr1Text = nr1Text.filter { $0.isNumber } }
+                                .onChange(of: nr1Text) { sanitizeNumberInput(&nr1Text) }
                                 .onSubmit { focusedField = .nr2 }
                                 .numberFieldStyle()
                                 .frame(width: 60)
@@ -82,7 +108,7 @@ struct NewJackpotView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr2)
-                            .onChange(of: nr2Text) { nr2Text = nr2Text.filter { $0.isNumber } }
+                            .onChange(of: nr2Text) { sanitizeNumberInput(&nr2Text) }
                             .onSubmit { focusedField = .nr3 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -91,7 +117,7 @@ struct NewJackpotView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr3)
-                            .onChange(of: nr3Text) { nr3Text = nr3Text.filter { $0.isNumber } }
+                            .onChange(of: nr3Text) { sanitizeNumberInput(&nr3Text) }
                             .onSubmit { focusedField = .nr4 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -100,7 +126,7 @@ struct NewJackpotView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr4)
-                            .onChange(of: nr4Text) { nr4Text = nr4Text.filter { $0.isNumber } }
+                            .onChange(of: nr4Text) { sanitizeNumberInput(&nr4Text) }
                             .onSubmit { focusedField = .nr5 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -109,7 +135,7 @@ struct NewJackpotView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr5)
-                            .onChange(of: nr5Text) { nr5Text = nr5Text.filter { $0.isNumber } }
+                            .onChange(of: nr5Text) { sanitizeNumberInput(&nr5Text) }
                             .onSubmit { focusedField = .nr6 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -118,7 +144,7 @@ struct NewJackpotView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr6)
-                            .onChange(of: nr6Text) { nr6Text = nr6Text.filter { $0.isNumber } }
+                            .onChange(of: nr6Text) { sanitizeNumberInput(&nr6Text) }
                             .onSubmit { focusedField = .nr7 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -127,8 +153,8 @@ struct NewJackpotView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.done)
                             .focused($focusedField, equals: .nr7)
-                            .onChange(of: nr7Text) { nr7Text = nr7Text.filter { $0.isNumber } }
-                            .onSubmit { focusedField = nil }
+                            .onChange(of: nr7Text) { sanitizeNumberInput(&nr7Text) }
+                            .onSubmit { focusedField = .nr8 }
                             .numberFieldStyle()
                             .frame(width: 60)
                         
@@ -136,14 +162,25 @@ struct NewJackpotView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.done)
                             .focused($focusedField, equals: .nr8)
-                            .onChange(of: nr8Text) { nr8Text = nr8Text.filter { $0.isNumber } }
+                            .onChange(of: nr8Text) { sanitizeNumberInput(&nr8Text) }
                             .onSubmit { focusedField = nil }
                             .numberFieldStyle()
                             .frame(width: 60)
                     }
                     .padding(.horizontal, 4)
+
+                    if let validationMessage {
+                        Text(validationMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                    }
                     
                     Button("Save jackpot") {
+                        guard canSaveJackpot else {
+                            return
+                        }
+
                         jackpot.weekNr = getWeekNumber(from: jackpot.dato)
                         // Parse inputs from the text fields.
                         let n1 = Int(nr1Text) ?? 0
@@ -182,14 +219,10 @@ struct NewJackpotView: View {
                             nr8Text = ""
                             focusedField = .nr1
                         } catch {
-                            print("Save failed:", error.localizedDescription)
+                            errorMessage = "Kunne ikke lagre trekningen: \(error.localizedDescription)"
                         }
                     }
-                    .disabled({
-                        let values = [nr1Text, nr2Text, nr3Text, nr4Text, nr5Text, nr6Text, nr7Text, nr8Text].compactMap { Int($0) }
-                        let allValid = values.count == 8 && values.allSatisfy { $0 >= 1 }
-                        return !allValid || !jackpot.dato.isSaturday
-                    }())
+                    .disabled(!canSaveJackpot)
                     .buttonStyle(.borderedProminent)
                     .padding(.top, 20)
                 }
@@ -210,15 +243,17 @@ struct NewJackpotView: View {
             focusedField = .nr1
         }
         .background(Color.blue)
+        .alert("Feil", isPresented: errorAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage ?? "")
+        }
         
     }
     
     /// Returns the week number (1-53) for the given date.
     func getWeekNumber(from date: Date) -> Int {
-        // Use current calendar,, or specify for consistent results
-        let calendar = Calendar.current
-        // Returns 1-53
-        return calendar.component(.weekOfYear, from: date)
+        LottoDateSupport.weekNumber(for: date)
     }
     
     /// Deletes all rows of a given model type.
@@ -229,14 +264,19 @@ struct NewJackpotView: View {
         try context.delete(model: MyModel.self) // Predicate = nil deletes all rows of this type.
         try context.save()
     }
-}
 
+    private func sanitizeNumberInput(_ text: inout String) {
+        text = LottoRules.sanitizeNumberInput(text)
+    }
 
-extension Date {
-    /// Returns true when the date is a Saturday.
-    var isSaturday: Bool {
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.weekday], from: self)
-        return components.weekday == 7  // Sunday=1, Monday=2, ..., Saturday=7
+    private var errorAlertBinding: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    errorMessage = nil
+                }
+            }
+        )
     }
 }

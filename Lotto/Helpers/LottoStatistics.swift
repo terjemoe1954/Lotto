@@ -31,6 +31,16 @@ struct LottoStatistics {
         avgGaps: [Int: Double],
         lastDates: [Int: Date]
     ) {
+        statsPerNumber(from: jackpots, excludeHighestGapFromAverage: false)
+    }
+
+    static func statsPerNumber(
+        from jackpots: [JackPot],
+        excludeHighestGapFromAverage: Bool
+    ) -> (
+        avgGaps: [Int: Double],
+        lastDates: [Int: Date]
+    ) {
         var appearances: [Int: [Date]] = [:]
 
         for jackpot in jackpots {
@@ -61,7 +71,10 @@ struct LottoStatistics {
             }
 
             if !gaps.isEmpty {
-                avgGaps[number] = robustAverage(for: gaps)
+                avgGaps[number] = robustAverage(
+                    for: gaps,
+                    excludeHighestGapFromAverage: excludeHighestGapFromAverage
+                )
             }
         }
 
@@ -96,9 +109,15 @@ struct LottoStatistics {
         return nextDates
     }
 
-    private static func robustAverage(for gaps: [Double]) -> Double {
-        let sortedGaps = gaps.sorted()
+    private static func robustAverage(
+        for gaps: [Double],
+        excludeHighestGapFromAverage: Bool
+    ) -> Double {
+        let sourceGaps = excludeHighestGapFromAverage ? gapsWithoutHighestValue(from: gaps) : gaps
+        let sortedGaps = sourceGaps.sorted()
         let count = sortedGaps.count
+
+        guard count > 0 else { return 0 }
 
         if count < 4 {
             let trimCount = max(1, count / 5)
@@ -143,6 +162,16 @@ struct LottoStatistics {
         }
 
         return filtered.reduce(0, +) / Double(filtered.count)
+    }
+
+    private static func gapsWithoutHighestValue(from gaps: [Double]) -> [Double] {
+        guard gaps.count > 1, let highest = gaps.max(), let index = gaps.firstIndex(of: highest) else {
+            return gaps
+        }
+
+        var adjustedGaps = gaps
+        adjustedGaps.remove(at: index)
+        return adjustedGaps
     }
 
     private static func median(of values: [Double]) -> Double {

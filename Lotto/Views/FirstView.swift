@@ -11,8 +11,11 @@ import SwiftData
 /// Main menu for the app with entry points to all features.
 struct FirstView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \JackPot.dato, order: .forward) private var jackpots: [JackPot]
     @AppStorage("toleranse") var toleranse: Double = 3.0
+    @AppStorage("didSeedJackpots") private var didSeedJackpots = false
+    @AppStorage(LottoAppPreferences.appearanceModeKey) private var appearanceModeRawValue = AppearanceMode.system.rawValue
     @State private var showListRows = false
     @State private var showRegisterView = false
     @State private var showNumberCountView = false
@@ -21,7 +24,11 @@ struct FirstView: View {
     @State private var showFindWinnerView = false
     @State private var showNumberPredictionForm = false
     @State private var showingSettings = false
-    @AppStorage("darkModeEnabled") private var darkModeEnabled = false
+    @State private var errorMessage: String?
+    private var appearanceMode: AppearanceMode {
+        AppearanceMode(rawValue: appearanceModeRawValue) ?? .system
+    }
+
     var body: some View {
         NavigationStack {
             ZStack{
@@ -65,6 +72,20 @@ struct FirstView: View {
                             .buttonStyle(.borderedProminent)
                             .padding()
                             Text("Liste")
+                        }
+                        
+                        VStack {
+                            Button(action: {
+                                showNumberPredictionForm = true
+                            }) {
+                                Image(systemName: "wand.and.stars")
+                                    .resizable()
+                                    .frame(width: 50, height: 50)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .padding()
+                            Text("Forslag")
                         }
                         Spacer()
                     }
@@ -141,21 +162,6 @@ struct FirstView: View {
                         
                         VStack {
                             Button(action: {
-                                showNumberPredictionForm = true
-                            }) {
-                                Image(systemName: "umbrella.sensor.tag.radiowaves.left.and.right")   // Replace with your asset name
-                                    .resizable()
-                                    .frame(width: 50, height: 50)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }
-                            .buttonStyle(.borderedProminent)
-                            
-                            Text("Prediction")
-                        }
-                        .padding()
-                        
-                        VStack {
-                            Button(action: {
                                 showFindWinnerView = true
                             }) {
                                 Image(systemName: "flag.2.crossed")   // Replace with your asset name
@@ -185,16 +191,22 @@ struct FirstView: View {
                 }
             }
         }
-        .task {  // Loads `lotto.json` into SwiftData on first launch.
-            if self.jackpots.isEmpty {
-                let jackpots = loadJackpots()
-                for jackpot in jackpots {
-                    context.insert(jackpot)
-                    jackpot.weekNr = getWeekNumber(from: jackpot.dato)
-                }
+        .task {
+            await seedJackpotsIfNeeded()
+            await removeDuplicateJackpotsIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task {
+                await removeDuplicateJackpotsIfNeeded()
             }
         }
-        .preferredColorScheme(darkModeEnabled ? .dark : .light)
+        .onChange(of: jackpots.count) { _, _ in
+            Task {
+                await removeDuplicateJackpotsIfNeeded()
+            }
+        }
+        .preferredColorScheme(appearanceMode.colorScheme)
         .sheet(isPresented: $showNumberPredictionForm) {
             NumberPredictionForm()
         }
@@ -219,32 +231,101 @@ struct FirstView: View {
         .sheet(isPresented: $showingSettings) {
             SettingsView(toleranse: $toleranse)
         }
+        .alert("Feil", isPresented: errorAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage ?? "")
+        }
     }
     
     /// Reads `lotto.json` from the app bundle and decodes to JackPot.
-    func loadJackpots() -> [JackPot] {
+    func loadJackpots() throws -> [JackPot] {
         guard let url = Bundle.main.url(forResource: "lotto", withExtension: "json") else {
-            print ("Could not find lotto.json in bundle")
-            return []
+            throw CocoaError(.fileNoSuchFile)
         }
         
-        do {
-            let data = try Data(contentsOf: url)
-            let decoder = JSONDecoder()
-            let jackpots = try decoder.decode([JackPot].self, from: data)
-            return jackpots
-        } catch  {
-            print("Failed to decode lotto.json: \(error)")
-            return []
-        }
+        let data = try Data(contentsOf: url)
+        let decoder = JSONDecoder()
+        return try decoder.decode([JackPot].self, from: data)
     }
     
     /// Returns the week number (1-53) for the given date.
     func getWeekNumber(from date: Date) -> Int {
-        // Use current calendar,, or specify for consistent results
-        let calendar = Calendar.current
-        // Returns 1-53
-        return calendar.component(.weekOfYear, from: date)
+        LottoDateSupport.weekNumber(for: date)
+    }
+
+    @MainActor
+    private func seedJackpotsIfNeeded() async {
+        do {
+            let existingCount = try context.fetchCount(FetchDescriptor<JackPot>())
+            guard LottoRules.shouldSeedJackpots(
+                didSeedJackpots: didSeedJackpots,
+                existingCount: existingCount
+            ) else {
+                if existingCount > 0 {
+                    didSeedJackpots = true
+                }
+                return
+            }
+
+            try await Task.sleep(for: .seconds(2))
+
+            let syncedJackpots = try context.fetch(FetchDescriptor<JackPot>())
+            if !syncedJackpots.isEmpty {
+                didSeedJackpots = true
+                return
+            }
+
+            let seedJackpots = try loadJackpots()
+            let jackpotsToInsert = LottoRules.missingSeedJackpots(
+                seedJackpots: seedJackpots,
+                existingDates: syncedJackpots.map(\.dato)
+            )
+
+            guard !jackpotsToInsert.isEmpty else {
+                didSeedJackpots = true
+                return
+            }
+
+            for jackpot in jackpotsToInsert {
+                jackpot.weekNr = getWeekNumber(from: jackpot.dato)
+                context.insert(jackpot)
+            }
+
+            try context.save()
+            didSeedJackpots = true
+            errorMessage = nil
+        } catch {
+            errorMessage = "Kunne ikke laste historiske trekninger: \(error.localizedDescription)"
+        }
+    }
+
+    private var errorAlertBinding: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    errorMessage = nil
+                }
+            }
+        )
+    }
+
+    @MainActor
+    private func removeDuplicateJackpotsIfNeeded() async {
+        do {
+            let fetchedJackpots = try context.fetch(FetchDescriptor<JackPot>())
+            let duplicates = LottoRules.duplicateJackpots(in: fetchedJackpots)
+            guard !duplicates.isEmpty else { return }
+
+            for duplicate in duplicates {
+                context.delete(duplicate)
+            }
+
+            try context.save()
+        } catch {
+            errorMessage = "Kunne ikke rydde dubletter i trekninger: \(error.localizedDescription)"
+        }
     }
     
 }

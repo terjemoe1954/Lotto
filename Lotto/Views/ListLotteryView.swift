@@ -34,13 +34,14 @@ struct ListLotteryView: View {
     @State private var reportFilter: ReportFilter = .weekOnly
     @State private var selectedWeekNr: Int?
     @State private var isPresentingPrintDialog = false
+    @State private var errorMessage: String?
 
     private var availableWeeks: [Int] {
         Array(Set(results.map(\.weekNr))).sorted(by: >)
     }
 
     private var currentWeekNr: Int {
-        Calendar.current.component(.weekOfYear, from: .now)
+        LottoDateSupport.weekNumber(for: .now)
     }
 
     private var filteredResults: [Result] {
@@ -134,14 +135,15 @@ struct ListLotteryView: View {
             presenting: rowToDelete ,
             actions: { item in
                 Button(role: .destructive) {
-                    withAnimation {
-                        context.delete(item)
-                        try? context.save()
+                    do {
+                        try delete(result: item)
+                    } catch {
+                        errorMessage = "Kunne ikke slette rekken: \(error.localizedDescription)"
                     }
                 } label: {
                     Text("Slett")
                 }
-                Button(role: .confirm) {
+                Button(role: .cancel) {
                 } label: {
                     Text("Avbryt")
                 }
@@ -149,6 +151,11 @@ struct ListLotteryView: View {
             message: { item in
                 Text("Er du sikker på at du vil slette trekningen \(formattedDate(item.dato))?")
             })
+        .alert("Feil", isPresented: errorAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage ?? "")
+        }
         .sheet(isPresented: $isPresentingPrintDialog) {
             PrintController(
                 content: PrintableLotteryResultsView(
@@ -175,10 +182,7 @@ struct ListLotteryView: View {
     
     /// Formats date to the app's display format (dd.MM.yyyy).
     func formattedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "nb_NO")
-        formatter.dateFormat = "dd.MM.yyyy"
-        return formatter.string(from: date)
+        LottoDateSupport.formattedDate(date)
     }
 
     private func ensureSelectedWeek() {
@@ -192,6 +196,30 @@ struct ListLotteryView: View {
         }
         selectedWeekNr = availableWeeks.contains(currentWeekNr) ? currentWeekNr : firstWeek
     }
+
+    private func delete(result: Result) throws {
+        withAnimation {
+            context.delete(result)
+        }
+
+        do {
+            try context.save()
+        } catch {
+            context.insert(result)
+            throw error
+        }
+    }
+
+    private var errorAlertBinding: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    errorMessage = nil
+                }
+            }
+        )
+    }
 }
 
 /// Print-friendly list of submitted rows.
@@ -204,10 +232,7 @@ private struct PrintableLotteryResultsView: View {
     private let rowsPerPage: Int = 20
 
     private func formattedDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "nb_NO")
-        formatter.dateFormat = "dd.MM.yyyy"
-        return formatter.string(from: date)
+        LottoDateSupport.formattedDate(date)
     }
 
     private var chunkedResults: [[Result]] {

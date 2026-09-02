@@ -19,21 +19,21 @@ enum LottoDateSupport {
         displayFormatter.string(from: date)
     }
 
-    static func weekNumber(for date: Date) -> Int {
+    nonisolated static func weekNumber(for date: Date) -> Int {
         Calendar.current.component(.weekOfYear, from: date)
     }
 
-    static func normalize(_ date: Date) -> Date {
+    nonisolated static func normalize(_ date: Date) -> Date {
         Calendar.current.startOfDay(for: date)
     }
 
-    static func isSaturday(_ date: Date) -> Bool {
+    nonisolated static func isSaturday(_ date: Date) -> Bool {
         Calendar.current.component(.weekday, from: date) == 7
     }
 }
 
 extension Date {
-    var isSaturday: Bool {
+    nonisolated var isSaturday: Bool {
         LottoDateSupport.isSaturday(self)
     }
 }

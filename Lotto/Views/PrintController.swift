@@ -63,7 +63,7 @@ struct PrintController<Content: View>: UIViewControllerRepresentable {
 
         let printInfo = UIPrintInfo(dictionary: nil)
         printInfo.outputType = .general
-        printInfo.jobName = "Lotto Resultater"
+        printInfo.jobName = title ?? "Lotto Resultater"
 
         let printController = UIPrintInteractionController.shared
         printController.printInfo = printInfo
@@ -126,7 +126,12 @@ struct PrintController<Content: View>: UIViewControllerRepresentable {
 
         let scale = fullImage.scale
         let contentHeightPoints = fullImage.size.height
-        let pageCount = max(1, Int(ceil(contentHeightPoints / printableRect.height)))
+        let contentRemainder = contentHeightPoints.truncatingRemainder(dividingBy: printableRect.height)
+        let minimumVisibleSliceHeight: CGFloat = 18
+        var pageCount = max(1, Int(ceil(contentHeightPoints / printableRect.height)))
+        if pageCount > 1, contentRemainder > 0, contentRemainder < minimumVisibleSliceHeight {
+            pageCount -= 1
+        }
         let renderer = UIGraphicsImageRenderer(size: pageSize)
         var images: [UIImage] = []
         images.reserveCapacity(pageCount)
@@ -187,4 +192,3 @@ struct PrintController<Content: View>: UIViewControllerRepresentable {
         return images
     }
 }
-

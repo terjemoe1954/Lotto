@@ -44,6 +44,8 @@ struct MyLotteryView: View {
     @Query(sort: \Result.dato, order: .forward) private var results: [Result]
     @Environment(\.dismiss) var dismiss
     @State private var result: Result = Result()
+    let initialDrawDate: Date?
+    let initialNumbers: [Int]?
     
     @State private var nr1Text: String = ""
     @State private var nr2Text: String = ""
@@ -55,6 +57,29 @@ struct MyLotteryView: View {
     
     private enum Field: Hashable { case nr1, nr2, nr3, nr4, nr5, nr6, nr7 }
     @FocusState private var focusedField: Field?
+    @State private var errorMessage: String?
+
+    private var enteredNumbers: [Int] {
+        [nr1Text, nr2Text, nr3Text, nr4Text, nr5Text, nr6Text, nr7Text]
+            .compactMap(Int.init)
+    }
+
+    private var hasDuplicateNumbers: Bool {
+        enteredNumbers.count != Set(enteredNumbers).count
+    }
+
+    private var canSaveRow: Bool {
+        enteredNumbers.count == 7 && validationMessage == nil
+    }
+
+    private var validationMessage: String? {
+        LottoRules.rowValidationMessage(numbers: enteredNumbers, drawDate: result.dato)
+    }
+
+    init(initialDrawDate: Date? = nil, initialNumbers: [Int]? = nil) {
+        self.initialDrawDate = initialDrawDate
+        self.initialNumbers = initialNumbers
+    }
     
     var body: some View {
         ZStack {
@@ -76,7 +101,7 @@ struct MyLotteryView: View {
                                 .keyboardType(.numberPad)
                                 .submitLabel(.next)
                                 .focused($focusedField, equals: .nr1)
-                                .onChange(of: nr1Text) { nr1Text = nr1Text.filter { $0.isNumber } }
+                                .onChange(of: nr1Text) { sanitizeNumberInput(&nr1Text) }
                                 .onSubmit { focusedField = .nr2 }
                                 .numberFieldStyle()
                                 .frame(width: 60)
@@ -86,7 +111,7 @@ struct MyLotteryView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr2)
-                            .onChange(of: nr2Text) { nr2Text = nr2Text.filter { $0.isNumber } }
+                            .onChange(of: nr2Text) { sanitizeNumberInput(&nr2Text) }
                             .onSubmit { focusedField = .nr3 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -95,7 +120,7 @@ struct MyLotteryView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr3)
-                            .onChange(of: nr3Text) { nr3Text = nr3Text.filter { $0.isNumber } }
+                            .onChange(of: nr3Text) { sanitizeNumberInput(&nr3Text) }
                             .onSubmit { focusedField = .nr4 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -104,7 +129,7 @@ struct MyLotteryView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr4)
-                            .onChange(of: nr4Text) { nr4Text = nr4Text.filter { $0.isNumber } }
+                            .onChange(of: nr4Text) { sanitizeNumberInput(&nr4Text) }
                             .onSubmit { focusedField = .nr5 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -113,7 +138,7 @@ struct MyLotteryView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr5)
-                            .onChange(of: nr5Text) { nr5Text = nr5Text.filter { $0.isNumber } }
+                            .onChange(of: nr5Text) { sanitizeNumberInput(&nr5Text) }
                             .onSubmit { focusedField = .nr6 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -122,7 +147,7 @@ struct MyLotteryView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.next)
                             .focused($focusedField, equals: .nr6)
-                            .onChange(of: nr6Text) { nr6Text = nr6Text.filter { $0.isNumber } }
+                            .onChange(of: nr6Text) { sanitizeNumberInput(&nr6Text) }
                             .onSubmit { focusedField = .nr7 }
                             .numberFieldStyle()
                             .frame(width: 60)
@@ -131,14 +156,25 @@ struct MyLotteryView: View {
                             .keyboardType(.numberPad)
                             .submitLabel(.done)
                             .focused($focusedField, equals: .nr7)
-                            .onChange(of: nr7Text) { nr7Text = nr7Text.filter { $0.isNumber } }
+                            .onChange(of: nr7Text) { sanitizeNumberInput(&nr7Text) }
                             .onSubmit { focusedField = nil }
                             .numberFieldStyle()
                             .frame(width: 60)
                     }
                     .padding(.horizontal, 4)
+
+                    if let validationMessage {
+                        Text(validationMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                    }
                     
                     Button("Lagre Ny Rekke") {
+                        guard canSaveRow else {
+                            return
+                        }
+
                         // Parse inputs from the text fields.
                         let n1 = Int(nr1Text) ?? 0
                         let n2 = Int(nr2Text) ?? 0
@@ -174,14 +210,10 @@ struct MyLotteryView: View {
                             nr7Text = ""
                             focusedField = .nr1
                         } catch {
-                            print("Save failed:", error.localizedDescription)
+                            errorMessage = "Kunne ikke lagre rekken: \(error.localizedDescription)"
                         }
                     }
-                    .disabled({
-                        let values = [nr1Text, nr2Text, nr3Text, nr4Text, nr5Text, nr6Text, nr7Text].compactMap { Int($0) }
-                        let allValid = values.count == 7 && values.allSatisfy { $0 >= 1 }
-                        return !allValid || !result.dato.isSaturday
-                    }())
+                    .disabled(!canSaveRow)
                     .buttonStyle(.borderedProminent)
                     .padding(.top, 20)
                     
@@ -190,26 +222,49 @@ struct MyLotteryView: View {
             
         }
         .onAppear {
-            // Initialize a fresh result when the view appears
-            result = Result()
-            nr1Text = ""
-            nr2Text = ""
-            nr3Text = ""
-            nr4Text = ""
-            nr5Text = ""
-            nr6Text = ""
-            nr7Text = ""
-            focusedField = .nr1
+            configureInitialState()
         }
         .background(Color.blue)
+        .alert("Feil", isPresented: errorAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage ?? "")
+        }
         
     }
     
     /// Returns the week number (1-53) for the given date.
     func getWeekNumber(from date: Date) -> Int {
-        // Use current calendar,, or specify for consistent results
-        let calendar = Calendar.current
-        // Returns 1-53
-        return calendar.component(.weekOfYear, from: date)
+        LottoDateSupport.weekNumber(for: date)
+    }
+
+    private func sanitizeNumberInput(_ text: inout String) {
+        text = LottoRules.sanitizeNumberInput(text)
+    }
+
+    private func configureInitialState() {
+        result = Result()
+        result.dato = LottoDateSupport.normalize(initialDrawDate ?? .now)
+
+        let numbers = Array((initialNumbers ?? []).prefix(7))
+        nr1Text = numbers.indices.contains(0) ? String(numbers[0]) : ""
+        nr2Text = numbers.indices.contains(1) ? String(numbers[1]) : ""
+        nr3Text = numbers.indices.contains(2) ? String(numbers[2]) : ""
+        nr4Text = numbers.indices.contains(3) ? String(numbers[3]) : ""
+        nr5Text = numbers.indices.contains(4) ? String(numbers[4]) : ""
+        nr6Text = numbers.indices.contains(5) ? String(numbers[5]) : ""
+        nr7Text = numbers.indices.contains(6) ? String(numbers[6]) : ""
+        focusedField = numbers.isEmpty ? .nr1 : nil
+    }
+
+    private var errorAlertBinding: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    errorMessage = nil
+                }
+            }
+        )
     }
 }

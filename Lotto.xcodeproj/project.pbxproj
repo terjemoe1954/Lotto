@@ -10,9 +10,20 @@
 		90D5C8202F460F6100F5FAE1 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 90D5C81F2F460F6100F5FAE1 /* README.md */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		A852F3B83047ED3C00A486AC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 903749352F2D16E10042DAE5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9037493C2F2D16E10042DAE5;
+			remoteInfo = Lotto;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		9037493D2F2D16E10042DAE5 /* Lotto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lotto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		90D5C81F2F460F6100F5FAE1 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		A852F3B43047ED3C00A486AC /* LottoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LottoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -34,10 +45,22 @@
 			path = Lotto;
 			sourceTree = "<group>";
 		};
+		A852F3B53047ED3C00A486AC /* LottoTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LottoTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		9037493A2F2D16E10042DAE5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A852F3B13047ED3C00A486AC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -51,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				9037493F2F2D16E10042DAE5 /* Lotto */,
+				A852F3B53047ED3C00A486AC /* LottoTests */,
 				9037493E2F2D16E10042DAE5 /* Products */,
 				90D5C81F2F460F6100F5FAE1 /* README.md */,
 			);
@@ -60,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				9037493D2F2D16E10042DAE5 /* Lotto.app */,
+				A852F3B43047ED3C00A486AC /* LottoTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -89,6 +114,29 @@
 			productReference = 9037493D2F2D16E10042DAE5 /* Lotto.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A852F3B33047ED3C00A486AC /* LottoTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A852F3BA3047ED3C00A486AC /* Build configuration list for PBXNativeTarget "LottoTests" */;
+			buildPhases = (
+				A852F3B03047ED3C00A486AC /* Sources */,
+				A852F3B13047ED3C00A486AC /* Frameworks */,
+				A852F3B23047ED3C00A486AC /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A852F3B93047ED3C00A486AC /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A852F3B53047ED3C00A486AC /* LottoTests */,
+			);
+			name = LottoTests;
+			packageProductDependencies = (
+			);
+			productName = LottoTests;
+			productReference = A852F3B43047ED3C00A486AC /* LottoTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -96,11 +144,15 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2620;
+				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					9037493C2F2D16E10042DAE5 = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					A852F3B33047ED3C00A486AC = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 9037493C2F2D16E10042DAE5;
 					};
 				};
 			};
@@ -119,6 +171,7 @@
 			projectRoot = "";
 			targets = (
 				9037493C2F2D16E10042DAE5 /* Lotto */,
+				A852F3B33047ED3C00A486AC /* LottoTests */,
 			);
 		};
 /* End PBXProject section */
@@ -132,6 +185,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A852F3B23047ED3C00A486AC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -142,7 +202,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A852F3B03047ED3C00A486AC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A852F3B93047ED3C00A486AC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9037493C2F2D16E10042DAE5 /* Lotto */;
+			targetProxy = A852F3B83047ED3C00A486AC /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		903749462F2D16E30042DAE5 /* Debug */ = {
@@ -275,7 +350,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Lotto/Lotto.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 4LR68777XL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -313,7 +388,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Lotto/Lotto.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 4LR68777XL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -344,6 +419,50 @@
 			};
 			name = Release;
 		};
+		A852F3BB3047ED3C00A486AC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4LR68777XL;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.terjemoe.LottoTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lotto.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Lotto";
+			};
+			name = Debug;
+		};
+		A852F3BC3047ED3C00A486AC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4LR68777XL;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.terjemoe.LottoTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Lotto.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Lotto";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -361,6 +480,15 @@
 			buildConfigurations = (
 				903749492F2D16E30042DAE5 /* Debug */,
 				9037494A2F2D16E30042DAE5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A852F3BA3047ED3C00A486AC /* Build configuration list for PBXNativeTarget "LottoTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A852F3BB3047ED3C00A486AC /* Debug */,
+				A852F3BC3047ED3C00A486AC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
