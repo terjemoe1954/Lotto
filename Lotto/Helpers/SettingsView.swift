@@ -34,6 +34,7 @@ struct SettingsView: View {
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showingAlert = false
+    @State private var showingManual = false
 
     private var appearanceMode: AppearanceMode {
         get { AppearanceMode(rawValue: appearanceModeRawValue) ?? .system }
@@ -82,6 +83,12 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Hjelp") {
+                    Button("Apne manual") {
+                        showingManual = true
+                    }
+                }
+
                 Section("App") {
                     LabeledContent("Versjon", value: LottoAppPreferences.appVersion)
                     LabeledContent("Build", value: LottoAppPreferences.buildNumber)
@@ -119,6 +126,9 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(alertMessage)
+            }
+            .sheet(isPresented: $showingManual) {
+                LottoManualView()
             }
         }
         .preferredColorScheme(appearanceMode.colorScheme)
@@ -199,6 +209,90 @@ struct SettingsView: View {
         alertTitle = title
         alertMessage = message
         showingAlert = true
+    }
+}
+
+private struct LottoManualView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    manualSection(
+                        title: "Om forslagene",
+                        lines: [
+                            "Forslagene bygger pa predikerte tall, vinnerrekker fra tidligere ar i samme ukenummer og generell frekvens.",
+                            "Predikerte tall er tall der neste beregnede dato ligger innen toleransen du har satt i settings.",
+                            "Samme uke betyr tall som har forekommet i historiske trekninger i samme ukenummer som den valgte datoen."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Hvordan tallene velges",
+                        lines: [
+                            "Trygg prioriterer predikerte tall og historikk fra samme uke sterkest.",
+                            "Balansert blander prediksjon, samme uke og generell frekvens jevnere.",
+                            "Sjansen sprer rekkene mer og slipper inn flere overraskelser.",
+                            "Alle forslag blir kontrollert slik at de inneholder 7 unike tall mellom 1 og 34."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Knapper i forslag",
+                        lines: [
+                            "Lagre lagrer rekken direkte som en innlevert rekke pa valgt dato.",
+                            "Levere apner rekken i skjermbildet for Levere, ferdig utfylt med riktig dato, slik at du kan kontrollere eller endre den for lagring.",
+                            "Print lager en utskriftsvennlig rapport med forslagene."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Eksport og backup",
+                        lines: [
+                            "I Mine rekker kan du markere valgte rekker og eksportere til Excel som CSV eller til Pages som TXT.",
+                            "Hvis ingen rekker er markert, eksporteres alle rekker i gjeldende filter.",
+                            "Backup i settings eksporterer og gjenoppretter baade trekninger, egne rekker og appinnstillinger."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "iCloud og dubletter",
+                        lines: [
+                            "Ved bruk av flere enheter kan SwiftData og CloudKit midlertidig lage dubletter under synkronisering.",
+                            "Appen rydder automatisk dubletter i trekninger ved oppstart og nar appen blir aktiv igjen.",
+                            "Innlesing av historiske trekninger fra lotto.json er ogsa strammet inn for a redusere risikoen for doble poster."
+                        ]
+                    )
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            }
+            .navigationTitle("Manual")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Ferdig") {
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func manualSection(title: String, lines: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+
+            ForEach(lines, id: \.self) { line in
+                Text(line)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
     }
 }
 
