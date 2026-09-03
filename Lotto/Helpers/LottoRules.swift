@@ -26,6 +26,26 @@ enum LottoRules {
         return nil
     }
 
+    static func duplicateResultValidationMessage(
+        numbers: [Int],
+        drawDate: Date,
+        existingResults: [Result]
+    ) -> String? {
+        guard numbers.count == 7 else { return nil }
+
+        let normalizedNumbers = normalizedResultNumbers(numbers)
+        let normalizedDate = LottoDateSupport.normalize(drawDate)
+
+        let duplicateExists = existingResults.contains { result in
+            LottoDateSupport.normalize(result.dato) == normalizedDate &&
+            normalizedResultNumbers([
+                result.nr1, result.nr2, result.nr3, result.nr4, result.nr5, result.nr6, result.nr7
+            ]) == normalizedNumbers
+        }
+
+        return duplicateExists ? "Samme rekke er allerede lagret pa denne datoen." : nil
+    }
+
     static func jackpotValidationMessage(
         numbers: [Int],
         drawDate: Date,
@@ -99,6 +119,12 @@ enum LottoRules {
         let nonZeroCount = numbers.filter { $0 != 0 }.count
         let hasWeekNumber = jackpot.weekNr > 0 ? 1 : 0
         return (validUniqueCount * 100) + (nonZeroCount * 10) + hasWeekNumber
+    }
+
+    static func normalizedResultNumbers(_ numbers: [Int]) -> [Int] {
+        numbers
+            .filter(validNumberRange.contains)
+            .sorted()
     }
 }
 

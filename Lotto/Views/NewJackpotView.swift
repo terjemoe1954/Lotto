@@ -91,6 +91,10 @@ struct NewJackpotView: View {
                     
                     DatePicker("Trekningsdato", selection: $jackpot.dato, displayedComponents: .date)
                         .padding(36)
+                    Text("Kun lordager kan brukes. Andre datoer flyttes til neste lordag.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                     VStack {
                         Group {
                             Text("Registrer Vinnertall Her")
@@ -232,6 +236,7 @@ struct NewJackpotView: View {
         .onAppear {
             // Initialize a fresh result when the view appears
             jackpot = JackPot()
+            jackpot.dato = LottoDateSupport.nextSaturday(onOrAfter: .now)
             nr1Text = ""
             nr2Text = ""
             nr3Text = ""
@@ -241,6 +246,9 @@ struct NewJackpotView: View {
             nr7Text = ""
             nr8Text = ""
             focusedField = .nr1
+        }
+        .onChange(of: jackpot.dato) { _, _ in
+            enforceSaturdaySelection()
         }
         .background(Color.blue)
         .alert("Feil", isPresented: errorAlertBinding) {
@@ -267,6 +275,13 @@ struct NewJackpotView: View {
 
     private func sanitizeNumberInput(_ text: inout String) {
         text = LottoRules.sanitizeNumberInput(text)
+    }
+
+    private func enforceSaturdaySelection() {
+        let saturday = LottoDateSupport.nextSaturday(onOrAfter: jackpot.dato)
+        if saturday != LottoDateSupport.normalize(jackpot.dato) {
+            jackpot.dato = saturday
+        }
     }
 
     private var errorAlertBinding: Binding<Bool> {

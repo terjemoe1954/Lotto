@@ -28,6 +28,9 @@ struct FindWinnerView: View {
                 Section("Velg Dato") {
                     DatePicker("Dato", selection: $selectedDate, displayedComponents: [.date])
                         .datePickerStyle(.compact)
+                    Text("Kun lordager brukes i kontrollen. Andre datoer flyttes til neste lordag.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
                 
                 Section {
@@ -101,6 +104,12 @@ struct FindWinnerView: View {
                 }
             }
             .navigationTitle("Finn Vinner")
+            .onAppear {
+                enforceSaturdaySelection()
+            }
+            .onChange(of: selectedDate) { _, _ in
+                enforceSaturdaySelection()
+            }
             .sheet(isPresented: $isPresentingPrintDialog) {
                 PrintController(
                     content: PrintableResultsView(
@@ -237,6 +246,13 @@ extension FindWinnerView {
                 errorMessage = error.localizedDescription
                 isLoading = false
             }
+        }
+    }
+
+    private func enforceSaturdaySelection() {
+        let saturday = LottoDateSupport.nextSaturday(onOrAfter: selectedDate)
+        if saturday != LottoDateSupport.normalize(selectedDate) {
+            selectedDate = saturday
         }
     }
 }

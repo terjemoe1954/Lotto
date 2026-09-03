@@ -11,6 +11,7 @@ import SwiftData
 struct NumberPredictionForm: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Result.dato, order: .forward) private var results: [Result]
     @AppStorage(LottoAppPreferences.toleranceKey) private var toleranse: Double = 3.0
     @AppStorage(LottoAppPreferences.excludeHighestGapKey) private var excludeHighestGapFromAverage = false
     @State private var selectedDate = Date()
@@ -18,7 +19,7 @@ struct NumberPredictionForm: View {
     @State private var predictedNumbers: [Int] = []
     @State private var suggestedRows: [SuggestedRow] = []
     @State private var suggestionMode: SuggestionMode = .balansert
-    @State private var suggestionCount = 20
+    @State private var suggestionCount = 5
     @State private var stats: (
         avgGaps: [Int: Double],
         lastDates: [Int: Date],
@@ -27,10 +28,11 @@ struct NumberPredictionForm: View {
     @State private var isLoading = true
     @State private var isPresentingPrintDialog = false
     @State private var rowForTransfer: SuggestedRow?
+    @State private var handledRowKeys = Set<String>()
     @State private var saveMessage: String?
     @State private var errorMessage: String?
 
-    private let suggestionCountRange = 5...40
+    private let suggestionCountRange = 5...20
 
     var body: some View {
         NavigationStack {
@@ -42,6 +44,10 @@ struct NumberPredictionForm: View {
                         displayedComponents: [.date]
                     )
                     .datePickerStyle(.graphical)
+
+                    Text("Kun lordager brukes i forslagene. Andre datoer flyttes til neste lordag.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Forslag") {
@@ -125,8 +131,9 @@ struct NumberPredictionForm: View {
                             SuggestedRowCard(
                                 index: index + 1,
                                 row: row,
+                                isDisabled: isRowUnavailable(row),
                                 onSave: { saveSuggestedRow(row) },
-                                onTransfer: { rowForTransfer = row }
+                                onTransfer: { transferSuggestedRow(row) }
                             )
                         }
                     }
@@ -155,8 +162,12 @@ struct NumberPredictionForm: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-            .onAppear(perform: loadStats)
+            .onAppear {
+                enforceSaturdaySelection()
+                loadStats()
+            }
             .onChange(of: selectedDate) { _, _ in
+                enforceSaturdaySelection()
                 updatePredictions()
             }
             .onChange(of: excludeHighestGapFromAverage) { _, _ in
@@ -249,6 +260,11 @@ struct NumberPredictionForm: View {
             return
         }
 
+        guard !isRowUnavailable(row) else {
+            errorMessage = "Denne rekken er allerede brukt for valgt dato."
+            return
+        }
+
         let result = Result(
             dato: LottoDateSupport.normalize(selectedDate),
             nr1: row.numbers[0],
@@ -264,6 +280,7 @@ struct NumberPredictionForm: View {
         do {
             context.insert(result)
             try context.save()
+            handledRowKeys.insert(rowKey(for: row, drawDate: selectedDate))
             saveMessage = "Rekke \(row.numbers.map(String.init).joined(separator: " ")) er lagret."
             errorMessage = nil
         } catch {
@@ -271,11 +288,49 @@ struct NumberPredictionForm: View {
             errorMessage = "Kunne ikke lagre rekken: \(error.localizedDescription)"
         }
     }
+
+    private func transferSuggestedRow(_ row: SuggestedRow) {
+        guard !isRowUnavailable(row) else {
+            errorMessage = "Denne rekken er allerede brukt for valgt dato."
+            return
+        }
+
+        handledRowKeys.insert(rowKey(for: row, drawDate: selectedDate))
+        rowForTransfer = row
+        errorMessage = nil
+    }
+
+    private func isRowUnavailable(_ row: SuggestedRow) -> Bool {
+        let key = rowKey(for: row, drawDate: selectedDate)
+        if handledRowKeys.contains(key) {
+            return true
+        }
+
+        return LottoRules.duplicateResultValidationMessage(
+            numbers: row.numbers,
+            drawDate: selectedDate,
+            existingResults: results
+        ) != nil
+    }
+
+    private func rowKey(for row: SuggestedRow, drawDate: Date) -> String {
+        let normalizedDate = LottoDateSupport.normalize(drawDate).timeIntervalSince1970
+        let numbers = LottoRules.normalizedResultNumbers(row.numbers).map(String.init).joined(separator: "-")
+        return "\(normalizedDate)-\(numbers)"
+    }
+
+    private func enforceSaturdaySelection() {
+        let saturday = LottoDateSupport.nextSaturday(onOrAfter: selectedDate)
+        if saturday != LottoDateSupport.normalize(selectedDate) {
+            selectedDate = saturday
+        }
+    }
 }
 
 private struct SuggestedRowCard: View {
     let index: Int
     let row: SuggestedRow
+    let isDisabled: Bool
     let onSave: () -> Void
     let onTransfer: () -> Void
 
@@ -296,12 +351,14 @@ private struct SuggestedRowCard: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                    .disabled(isDisabled)
 
                     Button("Lagre") {
                         onSave()
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                    .disabled(isDisabled)
                 }
             }
 
@@ -340,12 +397,25 @@ private struct PrintableSuggestedRowsView: View {
     let suggestedRows: [SuggestedRow]
 
     private let printablePageHeight: CGFloat = 730
-    private let rowsPerPage: Int = 8
+    private let firstPageRows = 5
+    private let followingPageRows = 6
 
     private var chunkedRows: [[SuggestedRow]] {
-        stride(from: 0, to: suggestedRows.count, by: rowsPerPage).map {
-            Array(suggestedRows[$0..<min($0 + rowsPerPage, suggestedRows.count)])
+        guard !suggestedRows.isEmpty else { return [] }
+
+        var chunks: [[SuggestedRow]] = []
+        var startIndex = 0
+        var pageIndex = 0
+
+        while startIndex < suggestedRows.count {
+            let pageSize = pageIndex == 0 ? firstPageRows : followingPageRows
+            let endIndex = min(startIndex + pageSize, suggestedRows.count)
+            chunks.append(Array(suggestedRows[startIndex..<endIndex]))
+            startIndex = endIndex
+            pageIndex += 1
         }
+
+        return chunks
     }
 
     var body: some View {
@@ -365,21 +435,17 @@ private struct PrintableSuggestedRowsView: View {
 
                     ForEach(Array(chunk.enumerated()), id: \.element.id) { rowIndex, row in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Rekke \(index * rowsPerPage + rowIndex + 1) - \(row.sourceLabel)")
+                            Text("Rekke \(displayRowNumber(pageIndex: index, rowIndex: rowIndex)) - \(row.sourceLabel)")
                                 .font(.headline)
                             Text(formattedNumbers(row.numbers))
                                 .font(.body.weight(.semibold))
                                 .monospacedDigit()
-                            if !row.predictedMatches.isEmpty {
-                                Text("Predikert: \(formattedNumbers(row.predictedMatches))")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            if !row.sameWeekMatches.isEmpty {
-                                Text("Samme uke: \(formattedNumbers(row.sameWeekMatches))")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                            Text("Predikert: \(formattedNumbers(row.predictedMatches))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("Samme uke: \(formattedNumbers(row.sameWeekMatches))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                         .padding(.bottom, 8)
                     }
@@ -396,6 +462,16 @@ private struct PrintableSuggestedRowsView: View {
             return "-"
         }
         return numbers.map { String(format: "%02d", $0) }.joined(separator: "  ")
+    }
+
+    private func displayRowNumber(pageIndex: Int, rowIndex: Int) -> Int {
+        let rowsBeforePage: Int
+        if pageIndex == 0 {
+            rowsBeforePage = 0
+        } else {
+            rowsBeforePage = firstPageRows + ((pageIndex - 1) * followingPageRows)
+        }
+        return rowsBeforePage + rowIndex + 1
     }
 }
 

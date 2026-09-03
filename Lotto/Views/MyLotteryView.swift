@@ -74,6 +74,11 @@ struct MyLotteryView: View {
 
     private var validationMessage: String? {
         LottoRules.rowValidationMessage(numbers: enteredNumbers, drawDate: result.dato)
+            ?? LottoRules.duplicateResultValidationMessage(
+                numbers: enteredNumbers,
+                drawDate: result.dato,
+                existingResults: results
+            )
     }
 
     init(initialDrawDate: Date? = nil, initialNumbers: [Int]? = nil) {
@@ -92,6 +97,11 @@ struct MyLotteryView: View {
                     
                     DatePicker("Treknings Dato", selection: $result.dato, displayedComponents: .date)
                         .padding(36)
+
+                    Text("Kun lordager kan brukes. Andre datoer flyttes til neste lordag.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                     
                     VStack(alignment: .center, spacing: 20) {
                         Group {
@@ -224,6 +234,9 @@ struct MyLotteryView: View {
         .onAppear {
             configureInitialState()
         }
+        .onChange(of: result.dato) { _, _ in
+            enforceSaturdaySelection()
+        }
         .background(Color.blue)
         .alert("Feil", isPresented: errorAlertBinding) {
             Button("OK", role: .cancel) { }
@@ -244,7 +257,7 @@ struct MyLotteryView: View {
 
     private func configureInitialState() {
         result = Result()
-        result.dato = LottoDateSupport.normalize(initialDrawDate ?? .now)
+        result.dato = LottoDateSupport.nextSaturday(onOrAfter: initialDrawDate ?? .now)
 
         let numbers = Array((initialNumbers ?? []).prefix(7))
         nr1Text = numbers.indices.contains(0) ? String(numbers[0]) : ""
@@ -255,6 +268,13 @@ struct MyLotteryView: View {
         nr6Text = numbers.indices.contains(5) ? String(numbers[5]) : ""
         nr7Text = numbers.indices.contains(6) ? String(numbers[6]) : ""
         focusedField = numbers.isEmpty ? .nr1 : nil
+    }
+
+    private func enforceSaturdaySelection() {
+        let saturday = LottoDateSupport.nextSaturday(onOrAfter: result.dato)
+        if saturday != LottoDateSupport.normalize(result.dato) {
+            result.dato = saturday
+        }
     }
 
     private var errorAlertBinding: Binding<Bool> {

@@ -121,6 +121,40 @@ struct LottoTests {
         #expect(message == "Tall må være mellom 1 og 34.")
     }
 
+    @Test func duplicateResultValidationRejectsSameNumbersOnSameDate() {
+        let calendar = Calendar(identifier: .gregorian)
+        let morning = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5, hour: 9))!
+        let evening = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5, hour: 21))!
+        let existingResults = [
+            Result(dato: morning, nr1: 1, nr2: 2, nr3: 3, nr4: 4, nr5: 5, nr6: 6, nr7: 7, weekNr: 36)
+        ]
+
+        let message = LottoRules.duplicateResultValidationMessage(
+            numbers: [7, 6, 5, 4, 3, 2, 1],
+            drawDate: evening,
+            existingResults: existingResults
+        )
+
+        #expect(message == "Samme rekke er allerede lagret pa denne datoen.")
+    }
+
+    @Test func duplicateResultValidationAllowsSameNumbersOnDifferentDate() {
+        let calendar = Calendar(identifier: .gregorian)
+        let firstDate = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5))!
+        let secondDate = calendar.date(from: DateComponents(year: 2026, month: 9, day: 12))!
+        let existingResults = [
+            Result(dato: firstDate, nr1: 1, nr2: 2, nr3: 3, nr4: 4, nr5: 5, nr6: 6, nr7: 7, weekNr: 36)
+        ]
+
+        let message = LottoRules.duplicateResultValidationMessage(
+            numbers: [1, 2, 3, 4, 5, 6, 7],
+            drawDate: secondDate,
+            existingResults: existingResults
+        )
+
+        #expect(message == nil)
+    }
+
     @Test func jackpotValidationRejectsExistingDrawDate() {
         let calendar = Calendar(identifier: .gregorian)
         let saturdayMorning = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5, hour: 9))!

@@ -30,6 +30,26 @@ enum LottoDateSupport {
     nonisolated static func isSaturday(_ date: Date) -> Bool {
         Calendar.current.component(.weekday, from: date) == 7
     }
+
+    nonisolated static func nextSaturday(onOrAfter date: Date) -> Date {
+        let normalizedDate = normalize(date)
+        let calendar = Calendar.current
+
+        if isSaturday(normalizedDate) {
+            return normalizedDate
+        }
+
+        for offset in 1...6 {
+            guard let candidate = calendar.date(byAdding: .day, value: offset, to: normalizedDate) else {
+                continue
+            }
+            if isSaturday(candidate) {
+                return candidate
+            }
+        }
+
+        return normalizedDate
+    }
 }
 
 extension Date {
