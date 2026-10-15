@@ -10,6 +10,11 @@ import Foundation
 enum LottoRules {
     static let validNumberRange = 1...34
 
+    struct JackpotImportPlan {
+        let missing: [JackPot]
+        let conflicts: [JackPot]
+    }
+
     static func rowValidationMessage(numbers: [Int], drawDate: Date) -> String? {
         if numbers.contains(where: { !validNumberRange.contains($0) }) {
             return "Tall må være mellom 1 og 34."
@@ -81,15 +86,37 @@ enum LottoRules {
         return String(min(value, validNumberRange.upperBound))
     }
 
-    static func shouldSeedJackpots(didSeedJackpots: Bool, existingCount: Int) -> Bool {
-        !didSeedJackpots && existingCount == 0
-    }
-
-    static func missingSeedJackpots(seedJackpots: [JackPot], existingDates: [Date]) -> [JackPot] {
-        let normalizedExistingDates = Set(existingDates.map(LottoDateSupport.normalize))
-        return seedJackpots.filter { jackpot in
-            !normalizedExistingDates.contains(LottoDateSupport.normalize(jackpot.dato))
+    static func jackpotImportPlan(
+        bundledJackpots: [JackPot],
+        existingJackpots: [JackPot]
+    ) -> JackpotImportPlan {
+        let existingByDate = Dictionary(
+            grouping: existingJackpots,
+            by: { LottoDateSupport.normalize($0.dato) }
+        )
+        var knownNumbersByDate = existingByDate.mapValues { jackpots in
+            Set(jackpots.map { jackpot in
+                jackpotNumbers(jackpot)
+            })
         }
+        var missing: [JackPot] = []
+        var conflicts: [JackPot] = []
+
+        for jackpot in bundledJackpots {
+            let normalizedDate = LottoDateSupport.normalize(jackpot.dato)
+            let numbers = jackpotNumbers(jackpot)
+
+            if let knownNumbers = knownNumbersByDate[normalizedDate] {
+                if !knownNumbers.contains(numbers) {
+                    conflicts.append(jackpot)
+                }
+            } else {
+                missing.append(jackpot)
+                knownNumbersByDate[normalizedDate] = [numbers]
+            }
+        }
+
+        return JackpotImportPlan(missing: missing, conflicts: conflicts)
     }
 
     static func duplicateJackpots(in jackpots: [JackPot]) -> [JackPot] {
@@ -114,7 +141,7 @@ enum LottoRules {
     }
 
     private static func jackpotQualityScore(_ jackpot: JackPot) -> Int {
-        let numbers = [jackpot.nr1, jackpot.nr2, jackpot.nr3, jackpot.nr4, jackpot.nr5, jackpot.nr6, jackpot.nr7, jackpot.nr8]
+        let numbers = jackpotNumbers(jackpot)
         let validUniqueCount = Set(numbers.filter(validNumberRange.contains)).count
         let nonZeroCount = numbers.filter { $0 != 0 }.count
         let hasWeekNumber = jackpot.weekNr > 0 ? 1 : 0
@@ -125,6 +152,13 @@ enum LottoRules {
         numbers
             .filter(validNumberRange.contains)
             .sorted()
+    }
+
+    private static func jackpotNumbers(_ jackpot: JackPot) -> [Int] {
+        [
+            jackpot.nr1, jackpot.nr2, jackpot.nr3, jackpot.nr4,
+            jackpot.nr5, jackpot.nr6, jackpot.nr7, jackpot.nr8
+        ].sorted()
     }
 }
 

@@ -10,6 +10,11 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
+enum LottoBackupContent: String, Codable {
+    case everything
+    case drawsOnly
+}
+
 struct LottoBackupSettings: Codable {
     var tolerance: Double
     var appearanceModeRawValue: String
@@ -230,12 +235,14 @@ struct LottoBackupResult: Codable {
 }
 
 struct LottoBackupSnapshot: Codable {
+    var content: LottoBackupContent
     var exportedAt: Date
     var settings: LottoBackupSettings
     var jackpots: [LottoBackupJackpot]
     var results: [LottoBackupResult]
 
     private enum CodingKeys: String, CodingKey {
+        case content
         case exportedAt
         case settings
         case jackpots
@@ -243,11 +250,13 @@ struct LottoBackupSnapshot: Codable {
     }
 
     nonisolated init(
+        content: LottoBackupContent = .everything,
         exportedAt: Date,
         settings: LottoBackupSettings,
         jackpots: [LottoBackupJackpot],
         results: [LottoBackupResult]
     ) {
+        self.content = content
         self.exportedAt = exportedAt
         self.settings = settings
         self.jackpots = jackpots
@@ -256,6 +265,7 @@ struct LottoBackupSnapshot: Codable {
 
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        content = try container.decodeIfPresent(LottoBackupContent.self, forKey: .content) ?? .everything
         exportedAt = try container.decode(Date.self, forKey: .exportedAt)
         settings = try container.decode(LottoBackupSettings.self, forKey: .settings)
         jackpots = try container.decode([LottoBackupJackpot].self, forKey: .jackpots)
@@ -264,6 +274,7 @@ struct LottoBackupSnapshot: Codable {
 
     nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(content, forKey: .content)
         try container.encode(exportedAt, forKey: .exportedAt)
         try container.encode(settings, forKey: .settings)
         try container.encode(jackpots, forKey: .jackpots)

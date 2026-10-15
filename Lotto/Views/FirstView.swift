@@ -14,7 +14,6 @@ struct FirstView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \JackPot.dato, order: .forward) private var jackpots: [JackPot]
     @AppStorage("toleranse") var toleranse: Double = 3.0
-    @AppStorage("didSeedJackpots") private var didSeedJackpots = false
     @AppStorage(LottoAppPreferences.appearanceModeKey) private var appearanceModeRawValue = AppearanceMode.system.rawValue
     @State private var showListRows = false
     @State private var showRegisterView = false
@@ -192,13 +191,15 @@ struct FirstView: View {
             }
         }
         .task {
-            await seedJackpotsIfNeeded()
+            await mergeBundledJackpots()
             await removeDuplicateJackpotsIfNeeded()
+            await updateJackpotsFromNorskTipping()
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             Task {
                 await removeDuplicateJackpotsIfNeeded()
+                await updateJackpotsFromNorskTipping()
             }
         }
         .onChange(of: jackpots.count) { _, _ in
@@ -255,46 +256,32 @@ struct FirstView: View {
     }
 
     @MainActor
-    private func seedJackpotsIfNeeded() async {
+    private func mergeBundledJackpots() async {
         do {
-            let existingCount = try context.fetchCount(FetchDescriptor<JackPot>())
-            guard LottoRules.shouldSeedJackpots(
-                didSeedJackpots: didSeedJackpots,
-                existingCount: existingCount
-            ) else {
-                if existingCount > 0 {
-                    didSeedJackpots = true
-                }
-                return
-            }
-
-            try await Task.sleep(for: .seconds(2))
-
-            let syncedJackpots = try context.fetch(FetchDescriptor<JackPot>())
-            if !syncedJackpots.isEmpty {
-                didSeedJackpots = true
-                return
-            }
-
-            let seedJackpots = try loadJackpots()
-            let jackpotsToInsert = LottoRules.missingSeedJackpots(
-                seedJackpots: seedJackpots,
-                existingDates: syncedJackpots.map(\.dato)
+            let bundledJackpots = try loadJackpots()
+            let existingJackpots = try context.fetch(FetchDescriptor<JackPot>())
+            let importPlan = LottoRules.jackpotImportPlan(
+                bundledJackpots: bundledJackpots,
+                existingJackpots: existingJackpots
             )
 
-            guard !jackpotsToInsert.isEmpty else {
-                didSeedJackpots = true
-                return
-            }
-
-            for jackpot in jackpotsToInsert {
+            for jackpot in importPlan.missing {
                 jackpot.weekNr = getWeekNumber(from: jackpot.dato)
                 context.insert(jackpot)
             }
 
-            try context.save()
-            didSeedJackpots = true
-            errorMessage = nil
+            if !importPlan.missing.isEmpty {
+                try context.save()
+            }
+
+            if importPlan.conflicts.isEmpty {
+                errorMessage = nil
+            } else {
+                let conflictDates = importPlan.conflicts
+                    .map { LottoDateSupport.formattedDate($0.dato) }
+                    .formatted()
+                errorMessage = "Fant ulike trekninger på samme dato i grunnarkivet og databasen: \(conflictDates). Eksisterende data ble beholdt."
+            }
         } catch {
             errorMessage = "Kunne ikke laste historiske trekninger: \(error.localizedDescription)"
         }
@@ -326,6 +313,12 @@ struct FirstView: View {
         } catch {
             errorMessage = "Kunne ikke rydde dubletter i trekninger: \(error.localizedDescription)"
         }
+    }
+
+    @MainActor
+    private func updateJackpotsFromNorskTipping() async {
+        // Automatic updates should not interrupt normal app use when the device is offline.
+        _ = try? await LottoDrawUpdater.update(modelContext: context)
     }
     
 }

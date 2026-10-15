@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 import UniformTypeIdentifiers
 
 /// Shows all submitted rows and lets the user delete them.
@@ -29,7 +30,9 @@ struct ListLotteryView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) var dismiss
+    @Environment(\.openURL) private var openURL
     @Query(sort: \Result.dato, order: .reverse) private var results: [Result]
+    @AppStorage("transferredResultKeys") private var transferredResultKeysRaw = ""
     @State private var rowToDelete: Result? = nil
     @State private var showConfirmation = false
     @State private var reportFilter: ReportFilter = .weekOnly
@@ -41,6 +44,7 @@ struct ListLotteryView: View {
     @State private var textDocument = LotteryTextDocument(text: "")
     @State private var selectedResultKeys = Set<String>()
     @State private var errorMessage: String?
+    @State private var statusMessage: String?
 
     private var availableWeeks: [Int] {
         Array(Set(results.map(\.weekNr))).sorted(by: >)
@@ -74,6 +78,10 @@ struct ListLotteryView: View {
         let selected = filteredResults.filter { selectedResultKeys.contains(selectionKey(for: $0)) }
         return selected.isEmpty ? filteredResults : selected
     }
+
+    private var transferredResultKeys: Set<String> {
+        Set(transferredResultKeysRaw.split(separator: "\n").map(String.init))
+    }
     
     var body: some View {
         NavigationStack {
@@ -103,7 +111,15 @@ struct ListLotteryView: View {
                 ZStack {
                     List(filteredResults, selection: $selectedResultKeys) { result in
                         VStack(alignment: .leading) {
-                            Text(formattedDate(result.dato))
+                            HStack {
+                                Text(formattedDate(result.dato))
+                                Spacer()
+                                if isTransferred(result) {
+                                    Label("Overført", systemImage: "checkmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.green)
+                                }
+                            }
                             Text("Uke: \(result.weekNr)")
                                 .font(.headline)
                             Text(formattedNumbers(for: result))
@@ -115,6 +131,24 @@ struct ListLotteryView: View {
                                 rowToDelete = result
                                 showConfirmation.toggle()
                             }
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            Button {
+                                copyToClipboard([result])
+                            } label: {
+                                Label("Kopier", systemImage: "doc.on.doc")
+                            }
+                            .tint(.blue)
+
+                            Button {
+                                toggleTransferred(result)
+                            } label: {
+                                Label(
+                                    isTransferred(result) ? "Ikke overført" : "Overført",
+                                    systemImage: isTransferred(result) ? "circle" : "checkmark.circle"
+                                )
+                            }
+                            .tint(isTransferred(result) ? .gray : .green)
                         }
                     }
                 }
@@ -132,6 +166,38 @@ struct ListLotteryView: View {
                     EditButton()
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            copyToClipboard(exportResults)
+                            openNorskTipping()
+                        } label: {
+                            Label("Kopier og åpne Norsk Tipping", systemImage: "arrow.up.forward.app")
+                        }
+
+                        Button {
+                            copyToClipboard(exportResults)
+                        } label: {
+                            Label("Kopier rekker", systemImage: "doc.on.doc")
+                        }
+
+                        Divider()
+
+                        Button {
+                            setTransferred(exportResults, transferred: true)
+                        } label: {
+                            Label("Merk som overført", systemImage: "checkmark.circle")
+                        }
+
+                        Button {
+                            setTransferred(exportResults, transferred: false)
+                        } label: {
+                            Label("Fjern overført-markering", systemImage: "circle")
+                        }
+                    } label: {
+                        Label("Lever", systemImage: "ticket")
+                    }
+                    .disabled(filteredResults.isEmpty)
+
                     Menu {
                         Button {
                             prepareCSVExport()
@@ -184,6 +250,11 @@ struct ListLotteryView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(errorMessage ?? "")
+        }
+        .alert("Mine rekker", isPresented: statusAlertBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(statusMessage ?? "")
         }
         .sheet(isPresented: $isPresentingPrintDialog) {
             PrintController(
@@ -292,6 +363,7 @@ struct ListLotteryView: View {
     }
 
     private func delete(result: Result) throws {
+        setTransferred([result], transferred: false)
         withAnimation {
             context.delete(result)
         }
@@ -304,6 +376,41 @@ struct ListLotteryView: View {
         }
     }
 
+    private func copyToClipboard(_ rows: [Result]) {
+        guard !rows.isEmpty else { return }
+        UIPasteboard.general.string = LottoDeliveryBuilder.clipboardText(from: rows)
+        statusMessage = rows.count == 1
+            ? "Rekken er kopiert."
+            : "\(rows.count) rekker er kopiert, én rekke per linje."
+    }
+
+    private func openNorskTipping() {
+        guard let url = URL(string: "https://www.norsk-tipping.no/lotteri/lotto/kupong?prefilled=false&weeks=1") else {
+            errorMessage = "Kunne ikke åpne Norsk Tipping."
+            return
+        }
+        openURL(url)
+    }
+
+    private func isTransferred(_ result: Result) -> Bool {
+        transferredResultKeys.contains(selectionKey(for: result))
+    }
+
+    private func toggleTransferred(_ result: Result) {
+        setTransferred([result], transferred: !isTransferred(result))
+    }
+
+    private func setTransferred(_ rows: [Result], transferred: Bool) {
+        var keys = transferredResultKeys
+        let rowKeys = rows.map(selectionKey(for:))
+        if transferred {
+            keys.formUnion(rowKeys)
+        } else {
+            keys.subtract(rowKeys)
+        }
+        transferredResultKeysRaw = keys.sorted().joined(separator: "\n")
+    }
+
     private var errorAlertBinding: Binding<Bool> {
         Binding(
             get: { errorMessage != nil },
@@ -313,6 +420,29 @@ struct ListLotteryView: View {
                 }
             }
         )
+    }
+
+    private var statusAlertBinding: Binding<Bool> {
+        Binding(
+            get: { statusMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    statusMessage = nil
+                }
+            }
+        )
+    }
+}
+
+enum LottoDeliveryBuilder {
+    static func clipboardText(from results: [Result]) -> String {
+        results
+            .map { result in
+                [result.nr1, result.nr2, result.nr3, result.nr4, result.nr5, result.nr6, result.nr7]
+                    .map { String(format: "%02d", $0) }
+                    .joined(separator: " ")
+            }
+            .joined(separator: "\n")
     }
 }
 
@@ -412,7 +542,7 @@ private struct PrintableLotteryResultsView: View {
 
     private let printablePageHeight: CGFloat = 730
     private let horizontalPadding: CGFloat = 16
-    private let rowsPerPage: Int = 20
+    private let rowsPerPage = LottoPrintLayout.rowsPerPage
 
     private func formattedDate(_ date: Date) -> String {
         LottoDateSupport.formattedDate(date)
@@ -428,31 +558,65 @@ private struct PrintableLotteryResultsView: View {
         VStack(spacing: 0) {
             ForEach(chunkedResults.indices, id: \.self) { index in
                 let chunk = chunkedResults[index]
-                VStack(alignment: .leading, spacing: 10) {
-                    if index == 0 {
-                        Text("Filter: \(filterTitle)")
-                            .font(.headline)
-                        Text("Antall rekker: \(results.count)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text(filterTitle)
+                        Spacer()
+                        Text("\(results.count) rekker")
                     }
+                    .font(.system(size: 11, weight: .semibold))
+                    .padding(.bottom, 8)
+
+                    HStack(spacing: 8) {
+                        Text("Dato")
+                            .frame(width: 72, alignment: .leading)
+                        Text("Uke")
+                            .frame(width: 34, alignment: .leading)
+                        Text("Tall")
+                    }
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.bottom, 4)
+
+                    Divider()
+
                     ForEach(chunk) { result in
-                        VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
                             Text(formattedDate(result.dato))
-                            Text("Uke: \(result.weekNr)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text("\(result.nr1)  \(result.nr2)  \(result.nr3)  \(result.nr4)  \(result.nr5)  \(result.nr6)  \(result.nr7)")
+                                .frame(width: 72, alignment: .leading)
+                            Text(String(result.weekNr))
+                                .frame(width: 34, alignment: .leading)
+                            Text(printableNumbers(for: result))
+                                .monospacedDigit()
                         }
-                        .padding(.bottom, 6)
+                        .font(.system(size: 10))
+                        .frame(height: 24)
+
+                        Divider()
                     }
                 }
                 .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, 12)
-                .frame(height: printablePageHeight)
+                .frame(height: printablePageHeight, alignment: .topLeading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.white)
             }
         }
+    }
+
+    private func printableNumbers(for result: Result) -> String {
+        [result.nr1, result.nr2, result.nr3, result.nr4, result.nr5, result.nr6, result.nr7]
+            .map { String(format: "%02d", $0) }
+            .joined(separator: "  ")
+    }
+}
+
+enum LottoPrintLayout {
+    static let rowsPerPage = 24
+
+    static func pageCount(for rowCount: Int) -> Int {
+        guard rowCount > 0 else { return 1 }
+        return Int(ceil(Double(rowCount) / Double(rowsPerPage)))
     }
 }
 

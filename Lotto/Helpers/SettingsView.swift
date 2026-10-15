@@ -9,6 +9,16 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
+private enum BackupRestoreScope {
+    case everything
+    case drawsOnly
+}
+
+private enum BackupExportScope {
+    case everything
+    case drawsOnly
+}
+
 /// App settings (dark mode and prediction tolerance).
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
@@ -17,7 +27,10 @@ struct SettingsView: View {
     @AppStorage(LottoAppPreferences.appearanceModeKey) private var appearanceModeRawValue = AppearanceMode.system.rawValue
     @AppStorage(LottoAppPreferences.excludeHighestGapKey) private var excludeHighestGapFromAverage = false
     @State private var isExportingBackup = false
+    @State private var showingExportOptions = false
     @State private var isImportingBackup = false
+    @State private var showingRestoreOptions = false
+    @State private var restoreScope: BackupRestoreScope = .everything
     @State private var backupDocument = LottoBackupDocument(
         snapshot: LottoBackupSnapshot(
             exportedAt: .now,
@@ -35,6 +48,7 @@ struct SettingsView: View {
     @State private var alertMessage = ""
     @State private var showingAlert = false
     @State private var showingManual = false
+    @State private var isUpdatingDraws = false
 
     private var appearanceMode: AppearanceMode {
         get { AppearanceMode(rawValue: appearanceModeRawValue) ?? .system }
@@ -74,13 +88,39 @@ struct SettingsView: View {
                 }
 
                 Section("Backup") {
-                    Button("Eksporter backup") {
-                        exportBackup()
+                    Button("Eksporter") {
+                        showingExportOptions = true
                     }
 
-                    Button("Gjenopprett backup") {
-                        isImportingBackup = true
+                    Button("Gjenopprett fra backup") {
+                        showingRestoreOptions = true
                     }
+
+                    Text("Du kan gjenopprette hele backupen eller bare importere manglende trekninger.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("Trekninger") {
+                    Button {
+                        Task {
+                            await updateDraws()
+                        }
+                    } label: {
+                        if isUpdatingDraws {
+                            HStack {
+                                ProgressView()
+                                Text("Kontrollerer nye trekninger …")
+                            }
+                        } else {
+                            Label("Oppdater trekninger", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(isUpdatingDraws)
+
+                    Text("Appen kontrollerer også automatisk etter nye trekninger ved oppstart.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Hjelp") {
@@ -103,6 +143,42 @@ struct SettingsView: View {
                 }
             }
             .font(.system(size: 16, weight: .semibold))
+            .confirmationDialog(
+                "Hva vil du eksportere?",
+                isPresented: $showingExportOptions,
+                titleVisibility: .visible
+            ) {
+                Button("Full backup") {
+                    exportBackup(scope: .everything)
+                }
+
+                Button("Bare trekninger") {
+                    exportBackup(scope: .drawsOnly)
+                }
+
+                Button("Avbryt", role: .cancel) { }
+            } message: {
+                Text("En trekningseksport inneholder ikke dine egne rekker eller personlige innstillinger.")
+            }
+            .confirmationDialog(
+                "Hva vil du gjenopprette?",
+                isPresented: $showingRestoreOptions,
+                titleVisibility: .visible
+            ) {
+                Button("Alt fra backup") {
+                    restoreScope = .everything
+                    isImportingBackup = true
+                }
+
+                Button("Bare trekninger") {
+                    restoreScope = .drawsOnly
+                    isImportingBackup = true
+                }
+
+                Button("Avbryt", role: .cancel) { }
+            } message: {
+                Text("Alt erstatter data og innstillinger på denne enheten. Bare trekninger beholder egne rekker og innstillinger.")
+            }
             .fileExporter(
                 isPresented: $isExportingBackup,
                 document: backupDocument,
@@ -143,23 +219,43 @@ struct SettingsView: View {
     }
 
     @MainActor
-    private func exportBackup() {
+    private func exportBackup(scope: BackupExportScope) {
         do {
             let jackpots = try context.fetch(FetchDescriptor<JackPot>())
-            let results = try context.fetch(FetchDescriptor<Result>())
-            let snapshot = LottoBackupSnapshot(
-                exportedAt: .now,
-                settings: LottoBackupSettings(
+            let results: [Result]
+            let settings: LottoBackupSettings
+            let content: LottoBackupContent
+
+            switch scope {
+            case .everything:
+                results = try context.fetch(FetchDescriptor<Result>())
+                settings = LottoBackupSettings(
                     tolerance: toleranse,
                     appearanceModeRawValue: appearanceMode.rawValue,
                     excludeHighestGapFromAverage: excludeHighestGapFromAverage
-                ),
+                )
+                content = .everything
+            case .drawsOnly:
+                results = []
+                settings = LottoBackupSettings(
+                    tolerance: 0,
+                    appearanceModeRawValue: AppearanceMode.system.rawValue,
+                    excludeHighestGapFromAverage: false
+                )
+                content = .drawsOnly
+            }
+
+            let snapshot = LottoBackupSnapshot(
+                content: content,
+                exportedAt: .now,
+                settings: settings,
                 jackpots: jackpots.map(LottoBackupJackpot.init),
                 results: results.map(LottoBackupResult.init)
             )
 
             backupDocument = LottoBackupDocument(snapshot: snapshot)
-            backupFileName = "Lotto-backup-\(Date.now.formatted(.iso8601.year().month().day())).json"
+            let filePrefix = scope == .everything ? "Lotto-backup" : "Lotto-trekninger"
+            backupFileName = "\(filePrefix)-\(Date.now.formatted(.iso8601.year().month().day())).json"
             isExportingBackup = true
         } catch {
             showAlert(title: "Feil", message: "Kunne ikke lage backup: \(error.localizedDescription)")
@@ -182,33 +278,92 @@ struct SettingsView: View {
             decoder.dateDecodingStrategy = .iso8601
             let snapshot = try decoder.decode(LottoBackupSnapshot.self, from: data)
 
-            try context.delete(model: JackPot.self)
-            try context.delete(model: Result.self)
-
-            for jackpot in snapshot.jackpots {
-                context.insert(jackpot.makeModel())
+            if snapshot.content == .drawsOnly {
+                let result = try importDraws(from: snapshot)
+                showAlert(title: "Trekninger", message: result)
+                return
             }
 
-            for result in snapshot.results {
-                context.insert(result.makeModel())
+            switch restoreScope {
+            case .everything:
+                try restoreEverything(from: snapshot)
+                showAlert(title: "Backup", message: "Hele backupen ble gjenopprettet.")
+            case .drawsOnly:
+                let result = try importDraws(from: snapshot)
+                showAlert(title: "Trekninger", message: result)
             }
-
-            try context.save()
-
-            toleranse = snapshot.settings.tolerance
-            appearanceMode = AppearanceMode(rawValue: snapshot.settings.appearanceModeRawValue) ?? .system
-            excludeHighestGapFromAverage = snapshot.settings.excludeHighestGapFromAverage
-
-            showAlert(title: "Backup", message: "Backup ble gjenopprettet.")
         } catch {
             showAlert(title: "Feil", message: "Kunne ikke gjenopprette backup: \(error.localizedDescription)")
         }
+    }
+
+    @MainActor
+    private func restoreEverything(from snapshot: LottoBackupSnapshot) throws {
+        try context.delete(model: JackPot.self)
+        try context.delete(model: Result.self)
+
+        for jackpot in snapshot.jackpots {
+            context.insert(jackpot.makeModel())
+        }
+
+        for result in snapshot.results {
+            context.insert(result.makeModel())
+        }
+
+        try context.save()
+
+        toleranse = snapshot.settings.tolerance
+        appearanceMode = AppearanceMode(rawValue: snapshot.settings.appearanceModeRawValue) ?? .system
+        excludeHighestGapFromAverage = snapshot.settings.excludeHighestGapFromAverage
+    }
+
+    @MainActor
+    private func importDraws(from snapshot: LottoBackupSnapshot) throws -> String {
+        let backupJackpots = snapshot.jackpots.map { $0.makeModel() }
+        let existingJackpots = try context.fetch(FetchDescriptor<JackPot>())
+        let importPlan = LottoRules.jackpotImportPlan(
+            bundledJackpots: backupJackpots,
+            existingJackpots: existingJackpots
+        )
+
+        for jackpot in importPlan.missing {
+            context.insert(jackpot)
+        }
+
+        if !importPlan.missing.isEmpty {
+            try context.save()
+        }
+
+        if importPlan.conflicts.isEmpty {
+            return "\(importPlan.missing.count) nye trekninger ble importert. Egne rekker og innstillinger ble beholdt."
+        }
+
+        return "\(importPlan.missing.count) nye trekninger ble importert. \(importPlan.conflicts.count) konflikter ble hoppet over. Egne rekker og innstillinger ble beholdt."
     }
 
     private func showAlert(title: String, message: String) {
         alertTitle = title
         alertMessage = message
         showingAlert = true
+    }
+
+    @MainActor
+    private func updateDraws() async {
+        isUpdatingDraws = true
+        defer { isUpdatingDraws = false }
+
+        do {
+            let result = try await LottoDrawUpdater.update(modelContext: context)
+            let message = result.addedCount == 0
+                ? "Alle tilgjengelige trekninger er allerede oppdatert."
+                : "La til \(result.addedCount) nye trekninger."
+            showAlert(title: "Trekninger", message: message)
+        } catch {
+            showAlert(
+                title: "Kunne ikke oppdatere",
+                message: "Kontroller internettforbindelsen og prøv igjen. \(error.localizedDescription)"
+            )
+        }
     }
 }
 

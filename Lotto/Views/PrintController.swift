@@ -41,7 +41,6 @@ struct PrintController<Content: View>: UIViewControllerRepresentable {
 
         let rootView = content
             .frame(width: printableRect.width)
-            .padding()
             .background(Color.white)
         let headerText = formattedHeader()
         let screenScale = controller.view.window?.windowScene?.screen.scale
@@ -126,12 +125,7 @@ struct PrintController<Content: View>: UIViewControllerRepresentable {
 
         let scale = fullImage.scale
         let contentHeightPoints = fullImage.size.height
-        let contentRemainder = contentHeightPoints.truncatingRemainder(dividingBy: printableRect.height)
-        let minimumVisibleSliceHeight: CGFloat = 48
-        var pageCount = max(1, Int(ceil(contentHeightPoints / printableRect.height)))
-        if pageCount > 1, contentRemainder > 0, contentRemainder < minimumVisibleSliceHeight {
-            pageCount -= 1
-        }
+        let pageCount = max(1, Int(ceil(contentHeightPoints / printableRect.height)))
         let renderer = UIGraphicsImageRenderer(size: pageSize)
         var images: [UIImage] = []
         images.reserveCapacity(pageCount)

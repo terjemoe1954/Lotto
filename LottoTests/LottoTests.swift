@@ -175,13 +175,7 @@ struct LottoTests {
         #expect(LottoRules.sanitizeNumberInput("ab") == "")
     }
 
-    @Test func shouldSeedJackpotsOnlyWhenNotSeededAndDatabaseIsEmpty() {
-        #expect(LottoRules.shouldSeedJackpots(didSeedJackpots: false, existingCount: 0))
-        #expect(!LottoRules.shouldSeedJackpots(didSeedJackpots: true, existingCount: 0))
-        #expect(!LottoRules.shouldSeedJackpots(didSeedJackpots: false, existingCount: 5))
-    }
-
-    @Test func missingSeedJackpotsSkipsDatesThatAlreadyExist() {
+    @Test func jackpotImportAddsOnlyDatesThatDoNotExist() {
         let calendar = Calendar(identifier: .gregorian)
         let existingDate = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5, hour: 21))!
         let matchingSeedDate = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5, hour: 9))!
@@ -192,13 +186,67 @@ struct LottoTests {
             JackPot(dato: newSeedDate, nr1: 9, nr2: 10, nr3: 11, nr4: 12, nr5: 13, nr6: 14, nr7: 15, nr8: 16)
         ]
 
-        let missing = LottoRules.missingSeedJackpots(
-            seedJackpots: seedJackpots,
-            existingDates: [existingDate]
+        let existingJackpot = JackPot(
+            dato: existingDate,
+            nr1: 1, nr2: 2, nr3: 3, nr4: 4,
+            nr5: 5, nr6: 6, nr7: 7, nr8: 8
+        )
+        let plan = LottoRules.jackpotImportPlan(
+            bundledJackpots: seedJackpots,
+            existingJackpots: [existingJackpot]
         )
 
-        #expect(missing.count == 1)
-        #expect(missing.first?.dato == newSeedDate)
+        #expect(plan.missing.count == 1)
+        #expect(plan.missing.first?.dato == newSeedDate)
+        #expect(plan.conflicts.isEmpty)
+    }
+
+    @Test func jackpotImportReportsDifferentNumbersOnExistingDate() {
+        let calendar = Calendar(identifier: .gregorian)
+        let existingDate = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5, hour: 21))!
+        let bundledDate = calendar.date(from: DateComponents(year: 2026, month: 9, day: 5, hour: 9))!
+        let existing = JackPot(
+            dato: existingDate,
+            nr1: 1, nr2: 2, nr3: 3, nr4: 4,
+            nr5: 5, nr6: 6, nr7: 7, nr8: 8
+        )
+        let bundled = JackPot(
+            dato: bundledDate,
+            nr1: 2, nr2: 3, nr3: 4, nr4: 5,
+            nr5: 6, nr6: 7, nr7: 8, nr8: 9
+        )
+
+        let plan = LottoRules.jackpotImportPlan(
+            bundledJackpots: [bundled],
+            existingJackpots: [existing]
+        )
+
+        #expect(plan.missing.isEmpty)
+        #expect(plan.conflicts.count == 1)
+        #expect(plan.conflicts.first === bundled)
+    }
+
+    @Test func drawsOnlyBackupContainsNoPersonalRowsAndKeepsItsType() throws {
+        let snapshot = LottoBackupSnapshot(
+            content: .drawsOnly,
+            exportedAt: .now,
+            settings: LottoBackupSettings(
+                tolerance: 0,
+                appearanceModeRawValue: AppearanceMode.system.rawValue,
+                excludeHighestGapFromAverage: false
+            ),
+            jackpots: [],
+            results: []
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(snapshot)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let decoded = try decoder.decode(LottoBackupSnapshot.self, from: data)
+
+        #expect(decoded.content == .drawsOnly)
+        #expect(decoded.results.isEmpty)
     }
 
     @Test func duplicateJackpotsKeepOnlyBestEntryPerDate() {
@@ -229,6 +277,74 @@ struct LottoTests {
 
         #expect(duplicates.count == 1)
         #expect(duplicates.first === duplicate)
+    }
+
+    @Test func remoteDrawDecoderSortsAndValidatesNumbers() throws {
+        let json = """
+        {
+          "gameResult": [{
+            "drawDate": "2026-10-10T16:30:00.000Z",
+            "winnerNumber": [
+              {"number": "23", "type": 1},
+              {"number": "3", "type": 1},
+              {"number": "5", "type": 1},
+              {"number": "19", "type": 1},
+              {"number": "28", "type": 1},
+              {"number": "2", "type": 1},
+              {"number": "8", "type": 1},
+              {"number": "1", "type": 2}
+            ]
+          }]
+        }
+        """
+
+        let draws = try LottoDrawUpdater.decodeDraws(from: Data(json.utf8))
+
+        #expect(draws.count == 1)
+        #expect(draws[0].mainNumbers == [2, 3, 5, 8, 19, 23, 28])
+        #expect(draws[0].extraNumber == 1)
+    }
+
+    @Test func remoteDrawDecoderRejectsDuplicateNumbers() {
+        let json = """
+        {
+          "gameResult": [{
+            "drawDate": "2026-10-10T16:30:00.000Z",
+            "winnerNumber": [
+              {"number": "2", "type": 1},
+              {"number": "3", "type": 1},
+              {"number": "5", "type": 1},
+              {"number": "8", "type": 1},
+              {"number": "19", "type": 1},
+              {"number": "23", "type": 1},
+              {"number": "28", "type": 1},
+              {"number": "28", "type": 2}
+            ]
+          }]
+        }
+        """
+
+        #expect(throws: LottoDrawUpdateError.self) {
+            try LottoDrawUpdater.decodeDraws(from: Data(json.utf8))
+        }
+    }
+
+    @Test func deliveryClipboardUsesOneFormattedRowPerLine() {
+        let rows = [
+            Result(nr1: 1, nr2: 3, nr3: 5, nr4: 8, nr5: 13, nr6: 21, nr7: 34),
+            Result(nr1: 2, nr2: 4, nr3: 6, nr4: 10, nr5: 16, nr6: 24, nr7: 30)
+        ]
+
+        let text = LottoDeliveryBuilder.clipboardText(from: rows)
+
+        #expect(text == "01 03 05 08 13 21 34\n02 04 06 10 16 24 30")
+    }
+
+    @Test func printLayoutKeepsAllRowsAcrossPages() {
+        #expect(LottoPrintLayout.pageCount(for: 0) == 1)
+        #expect(LottoPrintLayout.pageCount(for: 24) == 1)
+        #expect(LottoPrintLayout.pageCount(for: 25) == 2)
+        #expect(LottoPrintLayout.pageCount(for: 49) == 3)
     }
 
     @Test func winnerComparisonReturnsMatchedNumbersAndExtraNumber() {
