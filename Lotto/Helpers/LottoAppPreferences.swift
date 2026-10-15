@@ -1,7 +1,7 @@
 //
 //  LottoAppPreferences.swift
 //  Lotto
-//
+//   
 //  Created by Codex on 02/09/2026.
 //
 
