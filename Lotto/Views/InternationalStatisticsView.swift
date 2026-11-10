@@ -82,18 +82,34 @@ struct InternationalStatisticsView: View {
     private func frequencyChart(_ report: LotteryStatisticsReport) -> some View {
         let top = Array(report.sorted(by: .mostFrequent).filter { $0.count > 0 }.prefix(10))
         return Section {
-            Chart(top) { row in
-                BarMark(x: .value("Forekomster", row.count), y: .value("Tall", String(row.number)))
-                    .foregroundStyle(Color.accentColor.gradient)
-                    .annotation(position: .trailing) { Text("\(row.count)").font(.caption).monospacedDigit() }
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(top) { row in
+                    HStack(spacing: 12) {
+                        Text("\(row.number)")
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.primary)
+                            .frame(width: 32, alignment: .trailing)
+                        GeometryReader { geometry in
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.accentColor.gradient)
+                                .frame(width: geometry.size.width * CGFloat(row.count) / CGFloat(max(top.first?.count ?? 1, 1)))
+                        }
+                        .frame(height: 14)
+                        Text("\(row.count)")
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.primary)
+                            .frame(minWidth: 36, alignment: .trailing)
+                    }
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Tall \(row.number)")
                     .accessibilityValue("\(row.count) forekomster")
+                }
+                Text("Antall trekninger med tallet")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 4)
             }
-            .chartYScale(domain: top.map { String($0.number) })
-            .chartXAxisLabel("Antall trekninger med tallet")
-            .frame(height: CGFloat(top.count * 27 + 35))
-            .padding(.trailing, 20)
-            .padding(.vertical, 4)
+            .padding(.vertical, 8)
         } header: {
             Text(top.count < 10 ? "Forekomster" : "De 10 vanligste tallene")
         } footer: {
