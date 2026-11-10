@@ -42,6 +42,8 @@ extension View {
 struct MyLotteryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Result.dato, order: .forward) private var results: [Result]
+    @Query private var favoriteChanges: [LotteryFavoriteChange]
+    private var favoriteNumbers: [Int] { LotteryFavorites.selection(for: .lotto, records: favoriteChanges.map(\.record)).effective(for: .lotto).mainNumbers }
     @Environment(\.dismiss) var dismiss
     @State private var result: Result = Result()
     let initialDrawDate: Date?
@@ -211,13 +213,7 @@ struct MyLotteryView: View {
                             let currentDate = result.dato
                             result = Result()
                             result.dato = currentDate
-                            nr1Text = ""
-                            nr2Text = ""
-                            nr3Text = ""
-                            nr4Text = ""
-                            nr5Text = ""
-                            nr6Text = ""
-                            nr7Text = ""
+                            populateNumbers(favoriteNumbers)
                             focusedField = .nr1
                         } catch {
                             errorMessage = "Kunne ikke lagre rekken: \(error.localizedDescription)"
@@ -259,7 +255,12 @@ struct MyLotteryView: View {
         result = Result()
         result.dato = LottoDateSupport.nextSaturday(onOrAfter: initialDrawDate ?? .now)
 
-        let numbers = Array((initialNumbers ?? []).prefix(7))
+        let numbers = Array((initialNumbers ?? favoriteNumbers).prefix(7))
+        populateNumbers(numbers)
+        focusedField = numbers.isEmpty ? .nr1 : nil
+    }
+
+    private func populateNumbers(_ numbers: [Int]) {
         nr1Text = numbers.indices.contains(0) ? String(numbers[0]) : ""
         nr2Text = numbers.indices.contains(1) ? String(numbers[1]) : ""
         nr3Text = numbers.indices.contains(2) ? String(numbers[2]) : ""
@@ -267,7 +268,6 @@ struct MyLotteryView: View {
         nr5Text = numbers.indices.contains(4) ? String(numbers[4]) : ""
         nr6Text = numbers.indices.contains(5) ? String(numbers[5]) : ""
         nr7Text = numbers.indices.contains(6) ? String(numbers[6]) : ""
-        focusedField = numbers.isEmpty ? .nr1 : nil
     }
 
     private func enforceSaturdaySelection() {

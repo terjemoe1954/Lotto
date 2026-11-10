@@ -32,7 +32,7 @@ struct ListLotteryView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.openURL) private var openURL
     @Query(sort: \Result.dato, order: .reverse) private var results: [Result]
-    @AppStorage("transferredResultKeys") private var transferredResultKeysRaw = ""
+    @Query private var deliveryChanges: [LotteryDeliveryChange]
     @State private var rowToDelete: Result? = nil
     @State private var showConfirmation = false
     @State private var reportFilter: ReportFilter = .weekOnly
@@ -79,10 +79,6 @@ struct ListLotteryView: View {
         return selected.isEmpty ? filteredResults : selected
     }
 
-    private var transferredResultKeys: Set<String> {
-        Set(transferredResultKeysRaw.split(separator: "\n").map(String.init))
-    }
-    
     var body: some View {
         NavigationStack {
             VStack(spacing: 10) {
@@ -393,7 +389,8 @@ struct ListLotteryView: View {
     }
 
     private func isTransferred(_ result: Result) -> Bool {
-        transferredResultKeys.contains(selectionKey(for: result))
+        let row = WeeklyLotteryReport.rows(lotto: [result], international: [])[0]
+        return LotteryDeliverySync.latest(deliveryChanges.map(\.record))[row.id]?.registered ?? false
     }
 
     private func toggleTransferred(_ result: Result) {
@@ -401,14 +398,10 @@ struct ListLotteryView: View {
     }
 
     private func setTransferred(_ rows: [Result], transferred: Bool) {
-        var keys = transferredResultKeys
-        let rowKeys = rows.map(selectionKey(for:))
-        if transferred {
-            keys.formUnion(rowKeys)
-        } else {
-            keys.subtract(rowKeys)
-        }
-        transferredResultKeysRaw = keys.sorted().joined(separator: "\n")
+        do {
+            let keys = Set(WeeklyLotteryReport.rows(lotto: rows, international: []).map(\.id))
+            try LotteryDeliverySync.set(transferred, keys: keys, context: context)
+        } catch { context.rollback(); errorMessage = "Kunne ikke lagre markeringen: \(error.localizedDescription)" }
     }
 
     private var errorAlertBinding: Binding<Bool> {

@@ -14,6 +14,8 @@ struct NumberPredictionForm: View {
     @Query(sort: \Result.dato, order: .forward) private var results: [Result]
     @AppStorage(LottoAppPreferences.toleranceKey) private var toleranse: Double = 3.0
     @AppStorage(LottoAppPreferences.excludeHighestGapKey) private var excludeHighestGapFromAverage = false
+    @Query private var favoriteChanges: [LotteryFavoriteChange]
+    private var favorites: [Int] { LotteryFavorites.selection(for: .lotto, records: favoriteChanges.map(\.record)).effective(for: .lotto).mainNumbers }
     @State private var selectedDate = Date()
     @State private var jackpots: [JackPot] = []
     @State private var predictedNumbers: [Int] = []
@@ -58,6 +60,13 @@ struct NumberPredictionForm: View {
                     }
                     .pickerStyle(.segmented)
 
+                    if !favorites.isEmpty {
+                        Text("Faste favoritter: \(favorites.map(String.init).joined(separator: ", "))")
+                            .font(.footnote).foregroundStyle(.secondary)
+                        if favorites.count == 7 {
+                            Text("Alle sju tall er faste. Da finnes bare én unik rekke.").font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
                     Stepper("Antall rekker: \(suggestionCount)", value: $suggestionCount, in: suggestionCountRange)
 
                     Text(suggestionMode.description)
@@ -96,9 +105,9 @@ struct NumberPredictionForm: View {
                     }
                 }
 
-                Section("Predikerte tall for \(selectedDateLabel)") {
+                Section("Intervalltreff for \(selectedDateLabel)") {
                     if predictedNumbers.isEmpty {
-                        Text("Ingen tall predikert for denne datoen.")
+                        Text("Ingen historiske intervalltreff for denne datoen.")
                             .foregroundStyle(.secondary)
                     } else {
                         LazyVGrid(columns: [
@@ -117,7 +126,7 @@ struct NumberPredictionForm: View {
                     Text("\(predictedNumbers.count) av 34 tall er aktuelle.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(suggestedRows.count) forslag kombinerer predikerte tall, vinnerrekker fra samme ukenummer og generell frekvens.")
+                    Text("\(suggestedRows.count) forslag kombinerer historiske intervaller, vinnerrekker fra samme ukenummer og generell frekvens.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -173,6 +182,7 @@ struct NumberPredictionForm: View {
             .onChange(of: excludeHighestGapFromAverage) { _, _ in
                 loadStats()
             }
+            .onChange(of: favoriteChanges.map(\.record)) { _, _ in updatePredictions() }
             .onChange(of: suggestionCount) { _, _ in
                 updatePredictions()
             }
@@ -250,7 +260,8 @@ struct NumberPredictionForm: View {
             predictedNumbers: predictedNumbers,
             jackpots: jackpots,
             mode: suggestionMode,
-            rowCount: suggestionCount
+            rowCount: suggestionCount,
+            favoriteNumbers: favorites
         )
     }
 
@@ -367,7 +378,7 @@ private struct SuggestedRowCard: View {
                 .monospacedDigit()
 
             if !row.predictedMatches.isEmpty {
-                MatchLine(title: "Predikert", numbers: row.predictedMatches)
+                MatchLine(title: "Intervalltreff", numbers: row.predictedMatches)
             }
 
             if !row.sameWeekMatches.isEmpty {
@@ -428,7 +439,7 @@ private struct PrintableSuggestedRowsView: View {
                             .font(.headline)
                         Text("Modus: \(suggestionMode.title)")
                             .font(.subheadline)
-                        Text("Predikerte tall: \(formattedNumbers(predictedNumbers))")
+                        Text("Intervalltreff: \(formattedNumbers(predictedNumbers))")
                             .font(.subheadline)
                         Divider()
                     }
@@ -440,7 +451,7 @@ private struct PrintableSuggestedRowsView: View {
                             Text(formattedNumbers(row.numbers))
                                 .font(.body.weight(.semibold))
                                 .monospacedDigit()
-                            Text("Predikert: \(formattedNumbers(row.predictedMatches))")
+                            Text("Intervalltreff: \(formattedNumbers(row.predictedMatches))")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Text("Samme uke: \(formattedNumbers(row.sameWeekMatches))")

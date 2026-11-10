@@ -10,6 +10,7 @@ import SwiftData
 import UniformTypeIdentifiers
 
 private enum BackupRestoreScope {
+    case verify
     case everything
     case drawsOnly
 }
@@ -48,6 +49,7 @@ struct SettingsView: View {
     @State private var alertMessage = ""
     @State private var showingAlert = false
     @State private var showingManual = false
+    @State private var showingPrivacy = false
     @State private var isUpdatingDraws = false
 
     private var appearanceMode: AppearanceMode {
@@ -82,12 +84,19 @@ struct SettingsView: View {
                             .frame(width: 80)
                     }
 
-                    Text("0 betyr ingen toleranse for predikerte datoer.")
+                    Text("0 betyr ingen toleranse rundt intervallberegnede datoer.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
+                LotteryCloudStatusSection()
+
                 Section("Backup") {
+                    Button("Kontroller backupfil") {
+                        restoreScope = .verify
+                        isImportingBackup = true
+                    }
+
                     Button("Eksporter") {
                         showingExportOptions = true
                     }
@@ -130,6 +139,7 @@ struct SettingsView: View {
                 }
 
                 Section("App") {
+                    Button("Personvern og kontakt", systemImage: "hand.raised") { showingPrivacy = true }
                     LabeledContent("Versjon", value: LottoAppPreferences.appVersion)
                     LabeledContent("Build", value: LottoAppPreferences.buildNumber)
                 }
@@ -158,7 +168,7 @@ struct SettingsView: View {
 
                 Button("Avbryt", role: .cancel) { }
             } message: {
-                Text("En trekningseksport inneholder ikke dine egne rekker eller personlige innstillinger.")
+                Text("Eksporten omfatter alle tre spill. En trekningseksport inneholder ikke egne rekker eller personlige innstillinger.")
             }
             .confirmationDialog(
                 "Hva vil du gjenopprette?",
@@ -203,6 +213,7 @@ struct SettingsView: View {
             } message: {
                 Text(alertMessage)
             }
+            .sheet(isPresented: $showingPrivacy) { LottoPrivacyView() }
             .sheet(isPresented: $showingManual) {
                 LottoManualView()
             }
@@ -221,22 +232,20 @@ struct SettingsView: View {
     @MainActor
     private func exportBackup(scope: BackupExportScope) {
         do {
-            let jackpots = try context.fetch(FetchDescriptor<JackPot>())
-            let results: [Result]
             let settings: LottoBackupSettings
             let content: LottoBackupContent
 
             switch scope {
             case .everything:
-                results = try context.fetch(FetchDescriptor<Result>())
                 settings = LottoBackupSettings(
                     tolerance: toleranse,
                     appearanceModeRawValue: appearanceMode.rawValue,
-                    excludeHighestGapFromAverage: excludeHighestGapFromAverage
+                    excludeHighestGapFromAverage: excludeHighestGapFromAverage,
+                    weeklyRegisteredRows: UserDefaults.standard.string(forKey: WeeklyLotteryDelivery.storageKey) ?? "",
+                    lottoTransferredRows: UserDefaults.standard.string(forKey: "transferredResultKeys") ?? ""
                 )
                 content = .everything
             case .drawsOnly:
-                results = []
                 settings = LottoBackupSettings(
                     tolerance: 0,
                     appearanceModeRawValue: AppearanceMode.system.rawValue,
@@ -245,13 +254,7 @@ struct SettingsView: View {
                 content = .drawsOnly
             }
 
-            let snapshot = LottoBackupSnapshot(
-                content: content,
-                exportedAt: .now,
-                settings: settings,
-                jackpots: jackpots.map(LottoBackupJackpot.init),
-                results: results.map(LottoBackupResult.init)
-            )
+            let snapshot = try LottoBackupStore.snapshot(context: context, content: content, settings: settings)
 
             backupDocument = LottoBackupDocument(snapshot: snapshot)
             let filePrefix = scope == .everything ? "Lotto-backup" : "Lotto-trekninger"
@@ -278,40 +281,38 @@ struct SettingsView: View {
             decoder.dateDecodingStrategy = .iso8601
             let snapshot = try decoder.decode(LottoBackupSnapshot.self, from: data)
 
-            if snapshot.content == .drawsOnly {
+            if snapshot.content == .drawsOnly && restoreScope != .verify {
                 let result = try importDraws(from: snapshot)
                 showAlert(title: "Trekninger", message: result)
                 return
             }
 
             switch restoreScope {
+            case .verify:
+                let checked = try LottoBackupStore.check(snapshot)
+                showAlert(title: "Backupkontroll", message: checked.message)
             case .everything:
                 try restoreEverything(from: snapshot)
-                showAlert(title: "Backup", message: "Hele backupen ble gjenopprettet.")
+                let warnings = LottoBackupStore.personalRowWarnings(snapshot)
+                let description = warnings.count == 1 ? "Én eldre rekke bør kontrolleres. Den er beholdt uendret." : "\(warnings.count) eldre rekker bør kontrolleres. De er beholdt uendret."
+                let note = warnings.isEmpty ? "" : "\n\n" + description + "\n" + warnings.prefix(3).joined(separator: "\n")
+                showAlert(title: "Backup", message: "Hele backupen ble gjenopprettet." + note)
             case .drawsOnly:
                 let result = try importDraws(from: snapshot)
                 showAlert(title: "Trekninger", message: result)
             }
         } catch {
-            showAlert(title: "Feil", message: "Kunne ikke gjenopprette backup: \(error.localizedDescription)")
+            context.rollback()
+            let operation = restoreScope == .verify ? "kontrollere" : "gjenopprette"
+            showAlert(title: "Feil", message: "Kunne ikke \(operation) backup: \(error.localizedDescription)")
         }
     }
 
     @MainActor
     private func restoreEverything(from snapshot: LottoBackupSnapshot) throws {
-        try context.delete(model: JackPot.self)
-        try context.delete(model: Result.self)
-
-        for jackpot in snapshot.jackpots {
-            context.insert(jackpot.makeModel())
-        }
-
-        for result in snapshot.results {
-            context.insert(result.makeModel())
-        }
-
-        try context.save()
-
+        try LottoBackupStore.restoreEverything(snapshot, context: context)
+        if let marks = snapshot.settings.weeklyRegisteredRows { UserDefaults.standard.set(marks, forKey: WeeklyLotteryDelivery.storageKey) }
+        if let marks = snapshot.settings.lottoTransferredRows { UserDefaults.standard.set(marks, forKey: "transferredResultKeys") }
         toleranse = snapshot.settings.tolerance
         appearanceMode = AppearanceMode(rawValue: snapshot.settings.appearanceModeRawValue) ?? .system
         excludeHighestGapFromAverage = snapshot.settings.excludeHighestGapFromAverage
@@ -319,26 +320,11 @@ struct SettingsView: View {
 
     @MainActor
     private func importDraws(from snapshot: LottoBackupSnapshot) throws -> String {
-        let backupJackpots = snapshot.jackpots.map { $0.makeModel() }
-        let existingJackpots = try context.fetch(FetchDescriptor<JackPot>())
-        let importPlan = LottoRules.jackpotImportPlan(
-            bundledJackpots: backupJackpots,
-            existingJackpots: existingJackpots
-        )
-
-        for jackpot in importPlan.missing {
-            context.insert(jackpot)
+        let result = try LottoBackupStore.importDraws(snapshot, context: context)
+        if result.conflicts == 0 {
+            return "\(result.added) nye trekninger ble importert. Egne rekker og innstillinger ble beholdt."
         }
-
-        if !importPlan.missing.isEmpty {
-            try context.save()
-        }
-
-        if importPlan.conflicts.isEmpty {
-            return "\(importPlan.missing.count) nye trekninger ble importert. Egne rekker og innstillinger ble beholdt."
-        }
-
-        return "\(importPlan.missing.count) nye trekninger ble importert. \(importPlan.conflicts.count) konflikter ble hoppet over. Egne rekker og innstillinger ble beholdt."
+        return "\(result.added) nye trekninger ble importert. \(result.conflicts) konflikter ble hoppet over. Egne rekker og innstillinger ble beholdt."
     }
 
     private func showAlert(title: String, message: String) {
@@ -377,8 +363,8 @@ private struct LottoManualView: View {
                     manualSection(
                         title: "Om forslagene",
                         lines: [
-                            "Forslagene bygger pa predikerte tall, vinnerrekker fra tidligere ar i samme ukenummer og generell frekvens.",
-                            "Predikerte tall er tall der neste beregnede dato ligger innen toleransen du har satt i settings.",
+                            "Forslagene bygger på historiske intervaller, trekninger fra samme ukenummer i tidligere år og generell frekvens.",
+                            "Intervalltreff er tall der en beregnet historisk intervallrytme ligger nær valgt dato, innen toleransen i innstillingene. Dette er ikke en prognose.",
                             "Samme uke betyr tall som har forekommet i historiske trekninger i samme ukenummer som den valgte datoen."
                         ]
                     )
@@ -386,9 +372,9 @@ private struct LottoManualView: View {
                     manualSection(
                         title: "Hvordan tallene velges",
                         lines: [
-                            "Trygg prioriterer predikerte tall og historikk fra samme uke sterkest.",
-                            "Balansert blander prediksjon, samme uke og generell frekvens jevnere.",
-                            "Sjansen sprer rekkene mer og slipper inn flere overraskelser.",
+                            "Historikk legger mest vekt på intervalltreff og samme uke i tidligere år.",
+                            "Blandet fordeler vekten jevnere mellom historiske intervaller, samme uke og frekvens.",
+                            "Variasjon sprer tallvalgene mer. Ingen av modusene gir høyere vinnersjanse.",
                             "Alle forslag blir kontrollert slik at de inneholder 7 unike tall mellom 1 og 34."
                         ]
                     )

@@ -33,7 +33,9 @@ struct NumberCountsView: View {
                     return lhs.1 > rhs.1
                 }
             
-            Text("Antall Number: \(sortedCounts.count)")
+            Text("Antall tall: \(sortedCounts.count)")
+            Text("Intervall-datoer følger historiske snitt og forutsier ikke neste trekning.")
+                .font(.footnote).foregroundStyle(.secondary).padding(.horizontal)
 
             if let errorMessage {
                 Text(errorMessage)
@@ -45,22 +47,22 @@ struct NumberCountsView: View {
             List {
                 ForEach(sortedCounts, id: \.0) { number, count in
                     HStack {
-                        Text("Number \(number)")
+                        Text("Tall \(number)")
                         Spacer()
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text("Count: \(count)")
+                            Text("Forekomster: \(count)")
                             if let avg = averageDaysBetween[number] {
-                                Text(String(format: "Avg: %.1f days", avg))
+                                Text(String(format: "Snitt: %.1f dager", avg))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             } else {
-                                Text("Avg: -")
+                                Text("Snitt: –")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             
                             if let next = nextDatePerNumber[number] {
-                                Text("Next: \(next, style: .date)")
+                                Text("Intervall-dato: \(next, style: .date)")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                                 let weekNumber = getWeekNumber(from: next)
@@ -69,7 +71,7 @@ struct NumberCountsView: View {
                                     .bold()
                                     .foregroundStyle(.secondary)
                             } else {
-                                Text("Next: -")
+                                Text("Intervall-dato: -")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                                 Text("Uke: _")
@@ -81,7 +83,7 @@ struct NumberCountsView: View {
                 }
             }
             .onAppear(perform: loadCounts)
-            .navigationTitle("Number counts")
+            .navigationTitle("Tallstatistikk")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Ferdig") { dismiss() }
@@ -105,7 +107,7 @@ struct NumberCountsView: View {
                         averageDaysBetween: averageDaysBetween,
                         nextDatePerNumber: nextDatePerNumber
                     ),
-                    title: "Number Statistikk",
+                    title: "Tallstatistikk",
                     date: nil,
                     completion: {
                         isPresentingPrintDialog = false
@@ -189,7 +191,7 @@ struct NumberCountsView: View {
             Group {
                 if fitsOnOnePage {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text("Number Statistikk")
+                        Text("Tallstatistikk")
                             .bold()
                             .font(.headline)
                             .padding(.bottom, 6)
@@ -199,11 +201,11 @@ struct NumberCountsView: View {
                         // Header row
                         HStack {
                             Spacer()
-                            Text("Count")
+                            Text("Antall")
                                 .frame(width: 60, alignment: .trailing)
-                            Text("Avg Days")
+                            Text("Snitt dager")
                                 .frame(width: 80, alignment: .trailing)
-                            Text("Next Date")
+                            Text("Intervall-dato")
                                 .frame(width: 100, alignment: .trailing)
                             Text("Uke")
                                 .frame(width: 40, alignment: .trailing)
@@ -214,7 +216,7 @@ struct NumberCountsView: View {
                         
                         ForEach(sortedCounts, id: \.0) { number, count in
                             HStack {
-                                Text("Number \(number)")
+                                Text("Tall \(number)")
                                     .frame(width: 80, alignment: .leading)
                                 Spacer()
                                 Text("\(count)")
@@ -249,7 +251,7 @@ struct NumberCountsView: View {
                     ForEach(Array(chunkedCounts.enumerated()), id: \.offset) { index, chunk in
                         VStack(alignment: .leading, spacing: 0) {
                             if index == 0 {
-                                Text("Number Statistikk")
+                                Text("Tallstatistikk")
                                     .bold()
                                     .font(.headline)
                                     .padding(.bottom, 6)
@@ -259,11 +261,11 @@ struct NumberCountsView: View {
                                 // Header row
                                 HStack {
                                     Spacer()
-                                    Text("Count")
+                                    Text("Antall")
                                         .frame(width: 60, alignment: .trailing)
-                                    Text("Avg Days")
+                                    Text("Snitt dager")
                                         .frame(width: 80, alignment: .trailing)
-                                    Text("Next Date")
+                                    Text("Intervall-dato")
                                         .frame(width: 100, alignment: .trailing)
                                     Text("Uke")
                                         .frame(width: 40, alignment: .trailing)
@@ -274,7 +276,7 @@ struct NumberCountsView: View {
                             }
                             ForEach(chunk, id: \.0) { number, count in
                                 HStack {
-                                    Text("Number \(number)")
+                                    Text("Tall \(number)")
                                         .frame(width: 80, alignment: .leading)
                                     Spacer()
                                     Text("\(count)")

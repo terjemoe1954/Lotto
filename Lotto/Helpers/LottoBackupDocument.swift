@@ -19,17 +19,22 @@ struct LottoBackupSettings: Codable {
     var tolerance: Double
     var appearanceModeRawValue: String
     var excludeHighestGapFromAverage: Bool
+    var weeklyRegisteredRows: String?
+    var lottoTransferredRows: String?
 
     private enum CodingKeys: String, CodingKey {
         case tolerance
         case appearanceModeRawValue
         case excludeHighestGapFromAverage
+        case weeklyRegisteredRows, lottoTransferredRows
     }
 
-    nonisolated init(tolerance: Double, appearanceModeRawValue: String, excludeHighestGapFromAverage: Bool) {
+    nonisolated init(tolerance: Double, appearanceModeRawValue: String, excludeHighestGapFromAverage: Bool, weeklyRegisteredRows: String? = nil, lottoTransferredRows: String? = nil) {
         self.tolerance = tolerance
         self.appearanceModeRawValue = appearanceModeRawValue
         self.excludeHighestGapFromAverage = excludeHighestGapFromAverage
+        self.weeklyRegisteredRows = weeklyRegisteredRows
+        self.lottoTransferredRows = lottoTransferredRows
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -37,6 +42,8 @@ struct LottoBackupSettings: Codable {
         tolerance = try container.decode(Double.self, forKey: .tolerance)
         appearanceModeRawValue = try container.decode(String.self, forKey: .appearanceModeRawValue)
         excludeHighestGapFromAverage = try container.decode(Bool.self, forKey: .excludeHighestGapFromAverage)
+        weeklyRegisteredRows = try container.decodeIfPresent(String.self, forKey: .weeklyRegisteredRows)
+        lottoTransferredRows = try container.decodeIfPresent(String.self, forKey: .lottoTransferredRows)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -44,6 +51,8 @@ struct LottoBackupSettings: Codable {
         try container.encode(tolerance, forKey: .tolerance)
         try container.encode(appearanceModeRawValue, forKey: .appearanceModeRawValue)
         try container.encode(excludeHighestGapFromAverage, forKey: .excludeHighestGapFromAverage)
+        try container.encodeIfPresent(weeklyRegisteredRows, forKey: .weeklyRegisteredRows)
+        try container.encodeIfPresent(lottoTransferredRows, forKey: .lottoTransferredRows)
     }
 }
 
@@ -240,6 +249,10 @@ struct LottoBackupSnapshot: Codable {
     var settings: LottoBackupSettings
     var jackpots: [LottoBackupJackpot]
     var results: [LottoBackupResult]
+    /// nil identifies a legacy backup, which must preserve the new games on restore.
+    var internationalEntries: [InternationalLotteryRecord]?
+    var deliveryChanges: [LotteryDeliveryRecord]?
+    var favorites: [LotteryFavoriteRecord]?
 
     private enum CodingKeys: String, CodingKey {
         case content
@@ -247,6 +260,9 @@ struct LottoBackupSnapshot: Codable {
         case settings
         case jackpots
         case results
+        case internationalEntries
+        case deliveryChanges
+        case favorites
     }
 
     nonisolated init(
@@ -254,13 +270,19 @@ struct LottoBackupSnapshot: Codable {
         exportedAt: Date,
         settings: LottoBackupSettings,
         jackpots: [LottoBackupJackpot],
-        results: [LottoBackupResult]
+        results: [LottoBackupResult],
+        internationalEntries: [InternationalLotteryRecord]? = nil,
+        deliveryChanges: [LotteryDeliveryRecord]? = nil,
+        favorites: [LotteryFavoriteRecord]? = nil
     ) {
         self.content = content
         self.exportedAt = exportedAt
         self.settings = settings
         self.jackpots = jackpots
         self.results = results
+        self.internationalEntries = internationalEntries
+        self.deliveryChanges = deliveryChanges
+        self.favorites = favorites
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -270,6 +292,9 @@ struct LottoBackupSnapshot: Codable {
         settings = try container.decode(LottoBackupSettings.self, forKey: .settings)
         jackpots = try container.decode([LottoBackupJackpot].self, forKey: .jackpots)
         results = try container.decode([LottoBackupResult].self, forKey: .results)
+        internationalEntries = try container.decodeIfPresent([InternationalLotteryRecord].self, forKey: .internationalEntries)
+        deliveryChanges = try container.decodeIfPresent([LotteryDeliveryRecord].self, forKey: .deliveryChanges)
+        favorites = try container.decodeIfPresent([LotteryFavoriteRecord].self, forKey: .favorites)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -279,6 +304,9 @@ struct LottoBackupSnapshot: Codable {
         try container.encode(settings, forKey: .settings)
         try container.encode(jackpots, forKey: .jackpots)
         try container.encode(results, forKey: .results)
+        try container.encodeIfPresent(internationalEntries, forKey: .internationalEntries)
+        try container.encodeIfPresent(deliveryChanges, forKey: .deliveryChanges)
+        try container.encodeIfPresent(favorites, forKey: .favorites)
     }
 }
 

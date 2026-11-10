@@ -18,6 +18,9 @@ struct StartApp: App {
             return try ModelContainer(
                 for: JackPot.self,
                 Result.self,
+                InternationalLotteryEntry.self,
+                LotteryDeliveryChange.self,
+                LotteryFavoriteChange.self,
                 configurations: configuration
             )
         } catch {
@@ -27,7 +30,7 @@ struct StartApp: App {
 
     var body: some Scene {
         WindowGroup {
-            FirstView()
+            LotteryHomeView()
         }
         .modelContainer(sharedModelContainer)
     }

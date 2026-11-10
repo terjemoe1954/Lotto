@@ -17,22 +17,22 @@ enum SuggestionMode: String, CaseIterable, Identifiable, Codable {
     var title: String {
         switch self {
         case .trygg:
-            return "Trygg"
+            return "Historikk"
         case .balansert:
-            return "Balansert"
+            return "Blandet"
         case .sjansen:
-            return "Sjansen"
+            return "Variasjon"
         }
     }
 
     var description: String {
         switch self {
         case .trygg:
-            return "Prioriterer predikerte tall og historikk fra samme uke."
+            return "Legger mest vekt på historiske intervaller og samme uke i tidligere år."
         case .balansert:
-            return "Blander prediksjon, samme uke og frekvens jevnt."
+            return "Blander historiske intervaller, samme uke og frekvens."
         case .sjansen:
-            return "Sprer rekkene mer og slipper inn flere overraskelser."
+            return "Sprer tallvalgene mer. Gir ikke høyere vinnersjanse."
         }
     }
 }
@@ -54,7 +54,8 @@ enum LottoSuggestionEngine {
         predictedNumbers: [Int],
         jackpots: [JackPot],
         mode: SuggestionMode = .balansert,
-        rowCount: Int = 20
+        rowCount: Int = 20,
+        favoriteNumbers: [Int] = []
     ) -> [SuggestedRow] {
         guard rowCount > 0 else { return [] }
 
@@ -93,6 +94,44 @@ enum LottoSuggestionEngine {
 
         if weightedNumbers.isEmpty {
             weightedNumbers = Array(1...34)
+        }
+
+        let locked = LotteryFavoriteSelection(mainNumbers: favoriteNumbers).effective(for: .lotto)
+        if !locked.mainNumbers.isEmpty {
+            let target = min(rowCount, 500, locked.combinations(for: .lotto))
+            let available = weightedNumbers.filter { !locked.mainNumbers.contains($0) }
+            var seen = Set<[Int]>()
+            var result: [SuggestedRow] = []
+            for _ in 0..<(target * 50) {
+                guard result.count < target else { break }
+                var remaining = available
+                var row = locked.mainNumbers
+                while row.count < 7 {
+                    let weights = remaining.map { Double(max(1, score(for: $0, mode: mode, predictedSet: predictedSet,
+                        sameWeekFrequency: sameWeekFrequency, overallFrequency: overallFrequency, maxOverallFrequency: maxOverallFrequency) + 1)) }
+                    let ticket = Double.random(in: 0..<weights.reduce(0, +))
+                    var total = 0.0
+                    var chosen = remaining.count - 1
+                    for index in remaining.indices {
+                        total += weights[index]
+                        if ticket < total { chosen = index; break }
+                    }
+                    row.append(remaining.remove(at: chosen))
+                }
+                row.sort()
+                if seen.insert(row).inserted {
+                    result.append(suggestedRow(from: row, predictedSet: predictedSet, sameWeekSet: sameWeekSet, sourceLabel: "Favoritter og historikk"))
+                }
+            }
+            if result.count < target {
+                for values in locked.completions(for: .lotto, limit: target) {
+                    if seen.insert(values.main).inserted {
+                        result.append(suggestedRow(from: values.main, predictedSet: predictedSet, sameWeekSet: sameWeekSet, sourceLabel: "Favoritter og historikk"))
+                    }
+                    if result.count == target { break }
+                }
+            }
+            return result
         }
 
         var rows: [SuggestedRow] = []
@@ -141,7 +180,7 @@ enum LottoSuggestionEngine {
                         from: row,
                         predictedSet: predictedSet,
                         sameWeekSet: sameWeekSet,
-                        sourceLabel: predictedSet.isEmpty ? "Historisk miks" : "Predikert miks"
+                        sourceLabel: predictedSet.isEmpty ? "Historisk miks" : "Intervallmiks"
                     )
                 )
             }
