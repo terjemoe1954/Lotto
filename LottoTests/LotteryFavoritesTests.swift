@@ -9,7 +9,7 @@ private struct FixedFavoriteRandom: RandomNumberGenerator { mutating func next()
 struct LotteryFavoritesTests {
     private func container(url: URL? = nil) throws -> ModelContainer {
         let config = url.map { ModelConfiguration(url: $0, cloudKitDatabase: .none) } ?? ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
-        return try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self, LotteryFavoriteChange.self, configurations: config)
+        return try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self, LotteryFavoriteChange.self, LotteryLedgerEntry.self, configurations: config)
     }
     @Test func gameSpecificRangesLimitsAndSeparatePoolsAreValidated() {
         #expect(LotteryFavoriteSelection(mainNumbers: [1,34]).validation(for: .lotto) == nil)
@@ -23,25 +23,28 @@ struct LotteryFavoritesTests {
         #expect(bad.effective(for: .vikinglotto).mainNumbers == [2])
         #expect(bad.effective(for: .vikinglotto).extraNumbers == [3])
     }
-    @Test func lottoKeepsFavoritesInEveryModeAndStillGeneratesUniqueRows() {
+    @Test func lottoUsesOneFavoriteRowAndStillGeneratesUniqueRows() {
         for mode in SuggestionMode.allCases {
             let rows = LottoSuggestionEngine.makeSuggestedRows(for: LotteryCalendar.date("2026-11-14")!, predictedNumbers: [7,8,9], jackpots: [], mode: mode, rowCount: 20, favoriteNumbers: [1,34])
             #expect(rows.count == 20)
             #expect(Set(rows.map(\.id)).count == 20)
-            #expect(rows.allSatisfy { $0.numbers.contains(1) && $0.numbers.contains(34) && $0.numbers.count == 7 && Set($0.numbers).count == 7 })
+            #expect(rows[0].numbers.contains(1) && rows[0].numbers.contains(34))
+            #expect(rows.dropFirst().contains { !$0.numbers.contains(1) || !$0.numbers.contains(34) })
+            #expect(rows.allSatisfy { $0.numbers.count == 7 && Set($0.numbers).count == 7 })
         }
         let fixed = LottoSuggestionEngine.makeSuggestedRows(for: .now, predictedNumbers: [], jackpots: [], rowCount: 20, favoriteNumbers: Array(1...7))
-        #expect(fixed.count == 1)
+        #expect(fixed.count == 20)
         #expect(fixed[0].numbers == Array(1...7))
     }
-    @Test func internationalFavoritesAreFixedInAllModesAndPools() {
+    @Test func internationalFavoritesOnlyLockTheFirstRow() {
         for game in InternationalGame.allCases {
             for mode in InternationalSuggestionMode.allCases {
                 let extra = game == .vikinglotto ? [3] : [12]
                 let selection = LotteryFavoriteSelection(mainNumbers: [2,17], extraNumbers: extra)
                 let batch = InternationalSuggestionEngine.makeRows(game: game, date: LotteryCalendar.date("2026-11-10")!, records: [], mode: mode, count: 20, favorites: selection)
                 #expect(batch.rows.count == 20)
-                #expect(batch.rows.allSatisfy { $0.mainNumbers.contains(2) && $0.mainNumbers.contains(17) && Set(extra).isSubset(of: $0.extraNumbers) })
+                #expect(batch.rows[0].mainNumbers.contains(2) && batch.rows[0].mainNumbers.contains(17) && Set(extra).isSubset(of: batch.rows[0].extraNumbers))
+                #expect(batch.rows.dropFirst().contains { !$0.mainNumbers.contains(2) || !$0.mainNumbers.contains(17) })
                 #expect(batch.rows.allSatisfy { game.validation(main: $0.mainNumbers, extra: $0.extraNumbers, date: batch.date) == nil })
             }
         }
@@ -51,12 +54,12 @@ struct LotteryFavoritesTests {
         #expect(favorites.combinations(for: .vikinglotto) == 5)
         var rng = FixedFavoriteRandom()
         let batch = InternationalSuggestionEngine.makeRows(game: .vikinglotto, date: .now, records: [], count: 20, favorites: favorites, using: &rng)
-        #expect(batch.rows.count == 5)
-        #expect(Set(batch.rows.map(\.id)).count == 5)
+        #expect(batch.rows.count == 20)
+        #expect(Set(batch.rows.map(\.id)).count == 20)
         let all = LotteryFavoriteSelection(mainNumbers: [1,2,3,4,5], extraNumbers: [1,12])
         #expect(all.combinations(for: .eurojackpot) == 1)
         let full = InternationalSuggestionEngine.makeRows(game: .eurojackpot, date: .now, records: [], count: 20, favorites: all)
-        #expect(full.rows.count == 1)
+        #expect(full.rows.count == 20)
         #expect(full.rows[0].extraNumbers == [1,12])
         #expect(LotteryFavoriteSelection(mainNumbers: Array(1...7)).completions(for: .lotto, limit: 20).count == 1)
     }

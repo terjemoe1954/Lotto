@@ -25,7 +25,7 @@ struct LotteryFavoritesView: View {
                 Section {
                     Text(introductory ? "Velg dine favoritttall" : "Favoritttall")
                         .font(.title2.bold())
-                    Text("Valgfritt: Velg så mange favoritter du ønsker, opp til antall tall i en rekke. Favorittene blir faste i forslagene når de er slått på. Resten av tallene velges av forslagsfunksjonen.")
+                    Text("Valgfritt: Velg så mange favoritter du ønsker, opp til antall tall i en rekke. Når favorittene er slått på, brukes de i én egen rekke. Manglende tall fylles fra historikken. De øvrige rekkene følger valgt statistikkmetode.")
                         .font(.footnote).foregroundStyle(.secondary)
                     Picker("Spill", selection: $game) {
                         ForEach(LotteryReportGame.allCases) { Text($0.title).tag($0) }
@@ -47,7 +47,7 @@ struct LotteryFavoritesView: View {
                         drafts[game] = LotteryFavoriteSelection(enabled: value.enabled); dirty.insert(game)
                     }
                     if value.enabled && value.combinations(for: game) == 1 {
-                        Text("Du har fylt alle plassene med favoritter. Da finnes bare én unik rekke for dette spillet.")
+                        Text("Du har fylt favorittrekken. De øvrige rekkene lages som vanlig.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     Text("Valgene lagres per spill og kan synkroniseres med din private iCloud. Du kan endre dem fra Favoritter øverst i appen.")

@@ -77,19 +77,29 @@ enum InternationalSuggestionEngine {
         let extraWeights = weights(extra.rows, sameWeek: extraWeek.rows, candidates: Set(extraCandidates), mode: mode)
         let reportGame = LotteryReportGame(rawValue: game.rawValue)!
         let locked = favorites.effective(for: reportGame)
-        let wanted = min(20, max(0, count), locked.combinations(for: reportGame))
+        let wanted = min(20, max(0, count))
         var seen = Set<String>()
         var rows: [InternationalSuggestedRow] = []
+        if wanted > 0 && (!locked.mainNumbers.isEmpty || !locked.extraNumbers.isEmpty) {
+            // Complete one favorite row with historical weights, even in random mode.
+            func complete(_ selected: [Int], _ weights: [(number: Int, weight: Double)], _ count: Int) -> [Int] {
+                let ranked = weights.sorted { $0.weight == $1.weight ? $0.number < $1.number : $0.weight > $1.weight }
+                return (selected + ranked.map(\.number).filter { !selected.contains($0) }.prefix(count - selected.count)).sorted()
+            }
+            let favoriteRow = InternationalSuggestedRow(
+                mainNumbers: complete(locked.mainNumbers, weights(main.rows, sameWeek: mainWeek.rows, candidates: Set(mainCandidates), mode: .history), game.mainCount),
+                extraNumbers: complete(locked.extraNumbers, weights(extra.rows, sameWeek: extraWeek.rows, candidates: Set(extraCandidates), mode: .history), game.extraCount))
+            rows.append(favoriteRow); seen.insert(favoriteRow.id)
+        }
         for _ in 0..<(wanted * 50) {
             guard rows.count < wanted else { break }
             let row = InternationalSuggestedRow(
-                mainNumbers: (locked.mainNumbers + sample(mainWeights.filter { !locked.mainNumbers.contains($0.number) }, count: game.mainCount - locked.mainNumbers.count, using: &generator)).sorted(),
-                extraNumbers: (locked.extraNumbers + sample(extraWeights.filter { !locked.extraNumbers.contains($0.number) }, count: game.extraCount - locked.extraNumbers.count, using: &generator)).sorted()
-            )
+                mainNumbers: sample(mainWeights, count: game.mainCount, using: &generator),
+                extraNumbers: sample(extraWeights, count: game.extraCount, using: &generator))
             if seen.insert(row.id).inserted { rows.append(row) }
         }
         if rows.count < wanted {
-            for values in locked.completions(for: reportGame, limit: wanted) {
+            for values in LotteryFavoriteSelection().completions(for: reportGame, limit: wanted) {
                 let row = InternationalSuggestedRow(mainNumbers: values.main, extraNumbers: values.extra)
                 if seen.insert(row.id).inserted { rows.append(row) }
                 if rows.count == wanted { break }
@@ -161,16 +171,17 @@ enum InternationalSuggestedRowSaver {
         }
         var known = Set(existing.map { InternationalSuggestedRow(mainNumbers: $0.mainNumbers.sorted(), extraNumbers: $0.extraNumbers.sorted()).id })
         var added = 0
-        for row in rows {
-            let normalized = InternationalSuggestedRow(mainNumbers: row.mainNumbers.sorted(), extraNumbers: row.extraNumbers.sorted())
-            if known.insert(normalized.id).inserted {
-                context.insert(InternationalLotteryEntry(game: game, isDraw: false, date: day,
-                                                        main: normalized.mainNumbers, extra: normalized.extraNumbers))
-                added += 1
+        do {
+            for row in rows {
+                let normalized = InternationalSuggestedRow(mainNumbers: row.mainNumbers.sorted(), extraNumbers: row.extraNumbers.sorted())
+                if known.insert(normalized.id).inserted {
+                    try LotteryOwnRowStore.insert(InternationalLotteryEntry(game: game, isDraw: false, date: day,
+                                                            main: normalized.mainNumbers, extra: normalized.extraNumbers), context: context)
+                    added += 1
+                }
             }
-        }
-        do { if added > 0 { try context.save() } }
-        catch { context.rollback(); throw error }
+            if added > 0 { try context.save() }
+        } catch { context.rollback(); throw error }
         return added
     }
 }

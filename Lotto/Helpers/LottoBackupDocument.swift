@@ -253,6 +253,7 @@ struct LottoBackupSnapshot: Codable {
     var internationalEntries: [InternationalLotteryRecord]?
     var deliveryChanges: [LotteryDeliveryRecord]?
     var favorites: [LotteryFavoriteRecord]?
+    var ledger: [LotteryLedgerRecord]?
 
     private enum CodingKeys: String, CodingKey {
         case content
@@ -262,7 +263,7 @@ struct LottoBackupSnapshot: Codable {
         case results
         case internationalEntries
         case deliveryChanges
-        case favorites
+        case favorites, ledger
     }
 
     nonisolated init(
@@ -273,7 +274,8 @@ struct LottoBackupSnapshot: Codable {
         results: [LottoBackupResult],
         internationalEntries: [InternationalLotteryRecord]? = nil,
         deliveryChanges: [LotteryDeliveryRecord]? = nil,
-        favorites: [LotteryFavoriteRecord]? = nil
+        favorites: [LotteryFavoriteRecord]? = nil,
+        ledger: [LotteryLedgerRecord]? = nil
     ) {
         self.content = content
         self.exportedAt = exportedAt
@@ -283,6 +285,7 @@ struct LottoBackupSnapshot: Codable {
         self.internationalEntries = internationalEntries
         self.deliveryChanges = deliveryChanges
         self.favorites = favorites
+        self.ledger = ledger
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -295,6 +298,7 @@ struct LottoBackupSnapshot: Codable {
         internationalEntries = try container.decodeIfPresent([InternationalLotteryRecord].self, forKey: .internationalEntries)
         deliveryChanges = try container.decodeIfPresent([LotteryDeliveryRecord].self, forKey: .deliveryChanges)
         favorites = try container.decodeIfPresent([LotteryFavoriteRecord].self, forKey: .favorites)
+        ledger = try container.decodeIfPresent([LotteryLedgerRecord].self, forKey: .ledger)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -307,6 +311,7 @@ struct LottoBackupSnapshot: Codable {
         try container.encodeIfPresent(internationalEntries, forKey: .internationalEntries)
         try container.encodeIfPresent(deliveryChanges, forKey: .deliveryChanges)
         try container.encodeIfPresent(favorites, forKey: .favorites)
+        try container.encodeIfPresent(ledger, forKey: .ledger)
     }
 }
 

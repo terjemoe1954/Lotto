@@ -35,7 +35,7 @@ struct InternationalSuggestionsView: View {
                     }.pickerStyle(.segmented)
                     Text(mode.description).font(.footnote).foregroundStyle(.secondary)
                     if !favorites.mainNumbers.isEmpty || !favorites.extraNumbers.isEmpty {
-                        Text("Faste favoritter: \(favorites.mainNumbers.map(String.init).joined(separator: ", "))" + (favorites.extraNumbers.isEmpty ? "" : " + " + favorites.extraNumbers.map(String.init).joined(separator: ", ")))
+                        Text("Én favorittrekke med: \(favorites.mainNumbers.map(String.init).joined(separator: ", "))" + (favorites.extraNumbers.isEmpty ? "" : " + " + favorites.extraNumbers.map(String.init).joined(separator: ", ")))
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     Stepper("Antall rekker: \(count)", value: $count, in: 1...20)
@@ -51,7 +51,7 @@ struct InternationalSuggestionsView: View {
                 if let batch {
                     if batch.mode != .random { historySection(batch) }
                     if batch.rows.count < count {
-                        Text("Favorittene begrenser antall unike rekker til \(batch.rows.count).")
+                        Text("Antall unike forslag: \(batch.rows.count).")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if let message { Section { Text(message).foregroundStyle(.secondary) } }

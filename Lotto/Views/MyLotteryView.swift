@@ -206,8 +206,8 @@ struct MyLotteryView: View {
                         result.nr7 = n7
                         
                         result.weekNr = getWeekNumber(from: result.dato)
-                        context.insert(result)
                         do {
+                            try LotteryOwnRowStore.insert(result, context: context)
                             try context.save()
                             // Reset form for a new entry, keep the date.
                             let currentDate = result.dato
@@ -216,6 +216,7 @@ struct MyLotteryView: View {
                             populateNumbers(favoriteNumbers)
                             focusedField = .nr1
                         } catch {
+                            if result.modelContext != nil { context.delete(result) }
                             errorMessage = "Kunne ikke lagre rekken: \(error.localizedDescription)"
                         }
                     }

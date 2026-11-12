@@ -185,3 +185,16 @@ enum LottoWinnerLogic {
         )
     }
 }
+
+
+/// Ordinary number-based prizes; extra raffles and payout amounts require the operator.
+enum LotteryPrizeRules {
+    static func qualifies(game: LotteryReportGame, main: Int, extra: Int, date: Date) -> Bool {
+        switch game {
+        case .lotto:
+            return main >= 4
+        case .vikinglotto: return main >= 3
+        case .eurojackpot: return main >= 3 || (main == 2 && extra >= 1) || (main == 1 && extra == 2)
+        }
+    }
+}

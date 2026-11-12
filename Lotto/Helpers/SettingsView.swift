@@ -49,6 +49,7 @@ struct SettingsView: View {
     @State private var alertMessage = ""
     @State private var showingAlert = false
     @State private var showingManual = false
+    @State private var showingDuplicateCleanup = false
     @State private var showingPrivacy = false
     @State private var isUpdatingDraws = false
 
@@ -108,6 +109,12 @@ struct SettingsView: View {
                     Text("Du kan gjenopprette hele backupen eller bare importere manglende trekninger.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                }
+
+                Section("Vedlikehold") {
+                    Button("Rydd dupliserte egne rekker") { showingDuplicateCleanup = true }
+                    Text("Beholder én kopi per spill, trekningsdato og tall. Tar en kontrollert full backup før sletting.")
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
 
                 Section("Trekninger") {
@@ -212,6 +219,13 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(alertMessage)
+            }
+            .sheet(isPresented: $showingDuplicateCleanup) {
+                LotteryDuplicateCleanupView(settings: LottoBackupSettings(
+                    tolerance: toleranse, appearanceModeRawValue: appearanceMode.rawValue,
+                    excludeHighestGapFromAverage: excludeHighestGapFromAverage,
+                    weeklyRegisteredRows: UserDefaults.standard.string(forKey: WeeklyLotteryDelivery.storageKey) ?? "",
+                    lottoTransferredRows: UserDefaults.standard.string(forKey: "transferredResultKeys") ?? ""))
             }
             .sheet(isPresented: $showingPrivacy) { LottoPrivacyView() }
             .sheet(isPresented: $showingManual) {

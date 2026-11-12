@@ -64,7 +64,7 @@ struct WeeklyLotteryReportView: View {
                         document = WeeklyWorkbookDocument(data: WeeklyLotteryWorkbook.data(rows: chosen))
                         exporting = true
                     }.disabled(chosen.isEmpty)
-                    Text("Rapporten bruker lagrede egne rekker. Lagre ønskede forslag først. Uken følger norsk ISO-uke fra mandag til søndag, med årstall.")
+                    Text("Rapporten bruker lagrede egne rekker. Lagre ønskede forslag først. Merk rekken som registrert etter levering; da beregnes innsats og ordinær gevinst i Spilleoversikt. Uken følger norsk ISO-uke fra mandag til søndag, med årstall.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 if visible.isEmpty {

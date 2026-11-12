@@ -26,12 +26,14 @@ enum LottoBackupStore {
                 .filter { all || $0.isDraw }.map(\.archiveRecord),
             deliveryChanges: all ? LotteryDeliverySync.latest(try context.fetch(FetchDescriptor<LotteryDeliveryChange>()).map(\.record))
                 .values.sorted { $0.rowKey < $1.rowKey } : nil,
-            favorites: all ? LotteryFavorites.latest(try context.fetch(FetchDescriptor<LotteryFavoriteChange>()).map(\.record)).values.sorted { $0.gameID < $1.gameID } : nil)
+            favorites: all ? LotteryFavorites.latest(try context.fetch(FetchDescriptor<LotteryFavoriteChange>()).map(\.record)).values.sorted { $0.gameID < $1.gameID } : nil,
+            ledger: all ? try context.fetch(FetchDescriptor<LotteryLedgerEntry>()).map(\.record) : nil)
     }
 
     static func restoreEverything(_ snapshot: LottoBackupSnapshot, context: ModelContext) throws {
         guard snapshot.content == .everything else { throw LottoBackupValidationError.invalid("Filen inneholder bare trekninger.") }
         try validate(snapshot, includePersonal: true)
+        let snapshot = LotteryOwnRowStore.uniqueOwnRows(in: snapshot)
         let international = try snapshot.internationalEntries?.map { try $0.validatedModel() }
         do {
             // Individual deletes remain pending until the final save; a failure can roll back the replacement.
@@ -57,6 +59,10 @@ enum LottoBackupStore {
                 try LotteryDeliverySync.restore(records, context: context)
             }
             if let favorites = snapshot.favorites { try LotteryFavorites.restore(favorites, context: context) }
+            if let ledger = snapshot.ledger {
+                for entry in try context.fetch(FetchDescriptor<LotteryLedgerEntry>()) { context.delete(entry) }
+                for record in ledger { context.insert(LotteryLedgerEntry(record: record)) }
+            }
             try context.save()
         } catch { context.rollback(); throw error }
     }
@@ -116,6 +122,12 @@ enum LottoBackupStore {
                 throw LottoBackupValidationError.invalid("Favoritttallene er ugyldige.")
             }
         }
+        for record in snapshot.ledger ?? [] {
+            guard record.isValid else { throw LottoBackupValidationError.invalid("Spilleoversikten har ugyldige beløp eller dato.") }
+        }
+        guard Set((snapshot.ledger ?? []).map(\.id)).count == (snapshot.ledger ?? []).count else {
+            throw LottoBackupValidationError.invalid("Spilleoversikten har dupliserte poster.")
+        }
         for change in snapshot.deliveryChanges ?? [] {
             guard !change.rowKey.isEmpty, !change.changeID.isEmpty, change.changedAt.timeIntervalSince1970.isFinite else {
                 throw LottoBackupValidationError.invalid("En registreringsmarkering er ugyldig.")
@@ -131,8 +143,10 @@ struct LottoBackupCheckResult {
     let drawCount: Int
     let registeredRows: Int
     var warnings: [String] = []
+    var duplicateRowsSkipped = 0
     var message: String {
-        let summary = "Backupfilen ble lest og prøvegjenopprettet.\n\nLotto: \(lottoRows) egne rekker\nVikinglotto: \(vikingRows) egne rekker\nEurojackpot: \(euroRows) egne rekker\nTrekninger: \(drawCount)\nRegistrerte rekker: \(registeredRows)"
+        var summary = "Backupfilen ble lest og prøvegjenopprettet.\n\nLotto: \(lottoRows) egne rekker\nVikinglotto: \(vikingRows) egne rekker\nEurojackpot: \(euroRows) egne rekker\nTrekninger: \(drawCount)\nRegistrerte rekker: \(registeredRows)"
+        if duplicateRowsSkipped > 0 { summary += "\n\n\(duplicateRowsSkipped) ekstra kopier av egne rekker hoppes over ved gjenoppretting. Backupfilen endres ikke." }
         guard !warnings.isEmpty else { return summary }
         let notice = warnings.count == 1 ? "Varsel: Én eldre rekke har tall eller dato som bør kontrolleres. Den er bevart uendret." : "Varsel: \(warnings.count) eldre rekker har tall eller dato som bør kontrolleres. De er bevart uendret."
         return summary + "\n\n" + notice + "\n" + warnings.prefix(3).joined(separator: "\n") + (warnings.count > 3 ? "\nFlere varsler: \(warnings.count - 3)." : "")
@@ -142,7 +156,11 @@ struct LottoBackupCheckResult {
 extension LottoBackupStore {
     /// Reads the selected file into an independent local database; never uses the app's live context.
     static func check(_ snapshot: LottoBackupSnapshot) throws -> LottoBackupCheckResult {
-        let container = try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self, LotteryFavoriteChange.self,
+        try validate(snapshot, includePersonal: snapshot.content == .everything)
+        let originalOwnCount = snapshot.results.count + (snapshot.internationalEntries ?? []).filter { !$0.isDraw }.count
+        let snapshot = LotteryOwnRowStore.uniqueOwnRows(in: snapshot)
+        let skipped = originalOwnCount - snapshot.results.count - (snapshot.internationalEntries ?? []).filter { !$0.isDraw }.count
+        let container = try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self, LotteryFavoriteChange.self, LotteryLedgerEntry.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         let context = container.mainContext
         if snapshot.content == .drawsOnly {
@@ -179,6 +197,11 @@ extension LottoBackupStore {
                     }
                 }
             }
+            if let ledger = snapshot.ledger {
+                guard try signatures(restored.ledger ?? []) == signatures(ledger) else {
+                    throw LottoBackupValidationError.invalid("Spilleoversikten stemte ikke etter prøvegjenoppretting.")
+                }
+            }
             // Removed marks must also survive, even when they refer to a row no longer in the backup.
             if let changes = snapshot.deliveryChanges {
                 let state = LotteryDeliverySync.latest(restored.deliveryChanges ?? [])
@@ -196,7 +219,8 @@ extension LottoBackupStore {
             euroRows: international.filter { !$0.isDraw && $0.gameID == InternationalGame.eurojackpot.rawValue }.count,
             drawCount: try context.fetchCount(FetchDescriptor<JackPot>()) + international.filter(\.isDraw).count,
             registeredRows: rows.filter(\.isRegistered).count,
-            warnings: snapshot.content == .everything ? personalRowWarnings(snapshot) : [])
+            warnings: snapshot.content == .everything ? personalRowWarnings(snapshot) : [],
+            duplicateRowsSkipped: skipped)
     }
     static func personalRowWarnings(_ snapshot: LottoBackupSnapshot) -> [String] {
         snapshot.results.enumerated().compactMap { index, row in

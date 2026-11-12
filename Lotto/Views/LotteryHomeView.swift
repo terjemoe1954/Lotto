@@ -12,6 +12,7 @@ struct LotteryHomeView: View {
     @State private var showFavorites = false
     @State private var favoriteIntro = false
     @State private var showWeeklyReport = false
+    @State private var showLedger = false
     var body: some View {
         VStack(spacing: 0) {
             Picker("Spill", selection: $selection) {
@@ -28,6 +29,8 @@ struct LotteryHomeView: View {
                 Button("Ukesrapport", systemImage: "printer") { showWeeklyReport = true }
                     .buttonStyle(.bordered)
             }.padding(.horizontal).padding(.bottom, 4)
+            Button("Spilleoversikt", systemImage: "list.bullet.rectangle") { showLedger = true }
+                .buttonStyle(.bordered).padding(.bottom, 4)
             if let game = InternationalGame(rawValue: selection) {
                 InternationalLotteryView(game: game).id(game)
             } else {
@@ -41,6 +44,7 @@ struct LotteryHomeView: View {
                 else { favoritesIntroSeen = true }
             }
         }
+        .sheet(isPresented: $showLedger) { LotteryLedgerView() }
         .sheet(isPresented: $showWeeklyReport) { WeeklyLotteryReportView() }
         .task(id: WeeklyLotteryReport.rows(lotto: lottoRows, international: internationalRows).map(\.id)) {
             do {
@@ -73,7 +77,13 @@ struct InternationalLotteryView: View {
     }
     private var rows: [InternationalLotteryEntry] { entries.filter { $0.gameID == game.rawValue && !$0.isDraw } }
     private var visible: [InternationalLotteryEntry] {
-        let source = showingDraws ? draws : rows
+        let source = showingDraws ? draws : rows.sorted {
+            let a = matches($0), b = matches($1)
+            if a.main != b.main { return a.main > b.main }
+            if a.extra != b.extra { return a.extra > b.extra }
+            if $0.date != $1.date { return $0.date > $1.date }
+            return $0.numbersText < $1.numbersText
+        }
         return showAll ? source : Array(source.prefix(50))
     }
 
@@ -114,12 +124,20 @@ struct InternationalLotteryView: View {
                         Text(showingDraws ? "Ingen trekninger ennå. Trykk Hent nye trekninger." : "Ingen egne rekker ennå. Lagre en rekke eller prøv Forslag.")
                             .foregroundStyle(.secondary)
                     }
+                    if !showingDraws {
+                        Text("Sortert etter flest rette hovedtall, deretter tilleggstall. Grønn markering gjelder dagens ordinære premiegrupper; kontroller gevinst hos Norsk Tipping. Tilleggstrekninger og historiske regelendringer er ikke beregnet.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                     ForEach(visible) { entry in
                         VStack(alignment: .leading, spacing: 5) {
                             Text(LotteryCalendar.text(entry.date)).font(.caption).foregroundStyle(.secondary)
                             Text(entry.numbersText).font(.headline).monospacedDigit()
-                            if !entry.isDraw { Text(matchText(entry)).font(.subheadline).foregroundStyle(.secondary) }
+                            if !entry.isDraw {
+                                Text(matchText(entry)).font(.subheadline).foregroundStyle(.secondary)
+                                if isPrize(entry) { Label("Gevinst – kontroller hos Norsk Tipping", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
+                            }
                         }
+                        .listRowBackground(isPrize(entry) ? Color.green.opacity(0.15) : Color.clear)
                         .contextMenu {
                             ShareLink(item: "\(game.title) \(LotteryCalendar.text(entry.date))\n\(entry.numbersText)") {
                                 Label("Del rekke", systemImage: "square.and.arrow.up")
@@ -158,6 +176,15 @@ struct InternationalLotteryView: View {
         .preferredColorScheme((AppearanceMode(rawValue: appearance) ?? .system).colorScheme)
     }
 
+    private func matches(_ row: InternationalLotteryEntry) -> (main: Int, extra: Int) {
+        guard let draw = draws.first(where: { LotteryCalendar.day($0.date) == LotteryCalendar.day(row.date) }) else { return (-1,-1) }
+        return (Set(row.mainNumbers).intersection(draw.mainNumbers).count, Set(row.extraNumbers).intersection(draw.extraNumbers).count)
+    }
+    private func isPrize(_ row: InternationalLotteryEntry) -> Bool {
+        guard !row.isDraw else { return false }
+        let count = matches(row)
+        return LotteryPrizeRules.qualifies(game: LotteryReportGame(rawValue: game.rawValue)!, main: count.main, extra: count.extra, date: row.date)
+    }
     private func matchText(_ row: InternationalLotteryEntry) -> String {
         guard let draw = draws.first(where: { LotteryCalendar.day($0.date) == LotteryCalendar.day(row.date) }) else {
             return "Venter på trekningsresultat"
@@ -279,7 +306,7 @@ struct LotteryEntryEditor: View {
             if existing.contains(where: { Set($0.mainNumbers) == main && Set($0.extraNumbers) == extra }) {
                 errorMessage = "Denne rekken er allerede lagret på denne datoen."; return
             }
-            context.insert(InternationalLotteryEntry(game: game, isDraw: mode == .draw, date: date, main: main.sorted(), extra: extra.sorted()))
+            try LotteryOwnRowStore.insert(InternationalLotteryEntry(game: game, isDraw: mode == .draw, date: date, main: main.sorted(), extra: extra.sorted()), context: context)
             try context.save()
             dismiss()
         } catch { context.rollback(); errorMessage = error.localizedDescription }

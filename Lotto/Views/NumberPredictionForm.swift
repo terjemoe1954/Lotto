@@ -61,7 +61,7 @@ struct NumberPredictionForm: View {
                     .pickerStyle(.segmented)
 
                     if !favorites.isEmpty {
-                        Text("Faste favoritter: \(favorites.map(String.init).joined(separator: ", "))")
+                        Text("Én favorittrekke med: \(favorites.map(String.init).joined(separator: ", "))")
                             .font(.footnote).foregroundStyle(.secondary)
                         if favorites.count == 7 {
                             Text("Alle sju tall er faste. Da finnes bare én unik rekke.").font(.footnote).foregroundStyle(.secondary)
@@ -289,13 +289,13 @@ struct NumberPredictionForm: View {
         )
 
         do {
-            context.insert(result)
+            try LotteryOwnRowStore.insert(result, context: context)
             try context.save()
             handledRowKeys.insert(rowKey(for: row, drawDate: selectedDate))
             saveMessage = "Rekke \(row.numbers.map(String.init).joined(separator: " ")) er lagret."
             errorMessage = nil
         } catch {
-            context.delete(result)
+            if result.modelContext != nil { context.delete(result) }
             errorMessage = "Kunne ikke lagre rekken: \(error.localizedDescription)"
         }
     }

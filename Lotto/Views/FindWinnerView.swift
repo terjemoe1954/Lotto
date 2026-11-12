@@ -52,6 +52,10 @@ struct FindWinnerView: View {
                     }
                 }
                 
+                Section {
+                    Text("Grønn markering viser treff i dagens ordinære premiegrupper. Kontroller alltid gevinsten hos Norsk Tipping. Historiske regelendringer og tilleggstrekninger er ikke beregnet.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Section("Treff") {
                     Text(errorMessage == nil ? "Dato: \(selectedDate, style: .date)" : "")
                         .font(.subheadline)
@@ -63,6 +67,7 @@ struct FindWinnerView: View {
                         List(comparisons) { item in
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack {
+                                    if item.isPrize { Label("Gevinst – kontroller hos Norsk Tipping", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
                                     Text("Treff: \(item.matchCount)")
                                         .bold()
                                 }
@@ -83,6 +88,7 @@ struct FindWinnerView: View {
                                         .bold()
                                 }
                             }
+                            .listRowBackground(item.isPrize ? Color.green.opacity(0.15) : Color.clear)
                         }
                         .listStyle(.plain)
                         .frame(minHeight: 260)
@@ -108,6 +114,7 @@ struct FindWinnerView: View {
                 enforceSaturdaySelection()
             }
             .onChange(of: selectedDate) { _, _ in
+                comparisons = []; errorMessage = nil
                 enforceSaturdaySelection()
             }
             .sheet(isPresented: $isPresentingPrintDialog) {
@@ -153,6 +160,7 @@ struct ResultComparison: Identifiable, Hashable {
     let matchedExtraNumber: Int?
     
     var matchCount: Int { matchedNumbers.count }
+    var isPrize: Bool { LotteryPrizeRules.qualifies(game: .lotto, main: matchCount, extra: matchedExtraNumber == nil ? 0 : 1, date: jackpot.date) }
 }
 
 // MARK: - Data Access
@@ -238,7 +246,11 @@ extension FindWinnerView {
             }
             
             await MainActor.run {
-                comparisons = comps.sorted { $0.matchCount > $1.matchCount }
+                comparisons = comps.sorted {
+                    if $0.matchCount != $1.matchCount { return $0.matchCount > $1.matchCount }
+                    if ($0.matchedExtraNumber != nil) != ($1.matchedExtraNumber != nil) { return $0.matchedExtraNumber != nil }
+                    return $0.id < $1.id
+                }
                 isLoading = false
             }
         } catch {

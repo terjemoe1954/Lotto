@@ -140,12 +140,11 @@ rather than incorrectly reporting that a restore failed.
   winning chances. It can be skipped, and Favorites remains available above the
   game selector. The first-setup prompt is device-local; the preferences themselves
   use a new additive private-CloudKit model.
-- Enabled favorites are included in every generated suggestion in all modes.
+- Enabled favorites are included in the first generated suggestion only.
   Remaining numbers follow the selected mode. Manual own-row forms prefill the
   active favorites; transferred suggestions retain their full existing row.
   Winning-draw entry never prefills personal favorites.
-- Batches are limited by the number of possible unique rows. Filling all slots
-  fixes a single row. A bounded completion fallback prevents biased sampling
+- Filling all favorite slots fixes the first row; other rows still use the selected mode. A bounded completion fallback prevents biased sampling
   from yielding duplicate rows or an unnecessarily short batch.
 - Favorites can be disabled without forgetting the selected numbers, or cleared.
   Changes resolve per game by date and a stable change-ID tie break. No global
@@ -157,3 +156,36 @@ rather than incorrectly reporting that a restore failed.
 Settings contains Personvern og kontakt. Hosting-ready policy: docs/privacy.html.
 Draft metadata: APP_STORE_REVIEW.md. Remaining distribution checks:
 RELEASE_READINESS.md. These files have not been published or submitted.
+
+## Spilleoversikt og resultatkontroll
+- One favorite row is completed from historical weights; subsequent unique rows follow the selected mode without locked favorites.
+- Result checks sort descending by main matches, then extra matches. Ordinary prize hits have a green background and text; check actual payment with Norsk Tipping. Current ordinary prize thresholds are used; supplementary raffles and historical rule changes are not calculated.
+- Spilleoversikt derives ordinary stakes and prizes from the synced Levert/registered delivery log (dates from 2023). Lotto 5 NOK, Vikinglotto 8 NOK, Eurojackpot 25 NOK per unique game/date/numbers key; unmarking removes the derived expense. Draw date determines accounting month. Saved-row deletion does not erase delivered history. Manual posts remain separate; avoid entering the same expense or prize twice. Supplementary raffles, Joker and repeat purchases of identical rows require manual posts.
+- An optional device-local monthly gross-stake budget recommends a pause at the threshold; winnings never replenish the budget. It does not block purchases.
+- Automatic records are derived rather than inserted into SwiftData, so concurrent devices cannot duplicate them. Finalized official prize tables are cached locally and refetched per device; rollover jackpots and missing payouts stay pending. Manual ledger entries use an additive SwiftData model, are included in full backup and trial restore, and are excluded from draws-only backup. Older backups preserve the ledger. The CloudKit production schema needs the additive model before distribution.
+
+Prize references checked 12 November 2026: [Norsk Tipping rules](https://www.norsk-tipping.no/bli-kunde/no/kundevilkaar-og-spilleregler), [Vikinglotto](https://www.norsk-tipping.no/kundeservice/velge-spill/lotteri/vikinglotto).
+
+
+### Rydding av dupliserte egne rekker
+Under Innstillinger → Vedlikehold kan du kontrollere og rydde like egne rekker.
+Appen beholder én eksisterende kopi per spill, trekningsdato og tall, inkludert
+tilleggstall. Den lagrer og kontrollerer en full backup før sletting; backupen kan
+deles fra resultatvisningen og finnes i appens Documents/Lotto-backups. Kjør på
+én enhet og vent til iCloud har overført slettingene til de andre enhetene.
+Rekker på forskjellige trekningsdatoer beholdes. Trekninger, favoritter,
+Levert-markeringer og spilleoversikt endres ikke av denne oppryddingen.
+
+
+### Sperre mot nye dubletter
+Lagring av egne rekker kontrollerer databasen rett før innsetting. Samme spill,
+trekningsdato i norsk tid og tall (inkludert tilleggstall) kan ikke lagres igjen,
+selv om tallene oppgis i en annen rekkefølge. Samme rekke på en annen dato kan
+lagres. Forslag og manuell registrering bruker den samme lagringskontrollen.
+Gjenoppretting av gamle backuper hopper over ekstra kopier av egne rekker og viser
+antallet i backupkontrollen; selve backupfilen bevares uendret.
+
+Sperren gjelder rekker som er kjent på enheten. Samtidig lagring av samme rekke
+på to enheter uten nett kan fortsatt gi en iCloud-konflikt etter synkronisering,
+siden CloudKit ikke støtter SwiftData-unikhetsregler. Vedlikeholdsverktøyet kan
+rydde slike kopier etter at enhetene er ferdig synkronisert.

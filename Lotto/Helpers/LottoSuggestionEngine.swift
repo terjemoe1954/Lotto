@@ -97,48 +97,19 @@ enum LottoSuggestionEngine {
         }
 
         let locked = LotteryFavoriteSelection(mainNumbers: favoriteNumbers).effective(for: .lotto)
-        if !locked.mainNumbers.isEmpty {
-            let target = min(rowCount, 500, locked.combinations(for: .lotto))
-            let available = weightedNumbers.filter { !locked.mainNumbers.contains($0) }
-            var seen = Set<[Int]>()
-            var result: [SuggestedRow] = []
-            for _ in 0..<(target * 50) {
-                guard result.count < target else { break }
-                var remaining = available
-                var row = locked.mainNumbers
-                while row.count < 7 {
-                    let weights = remaining.map { Double(max(1, score(for: $0, mode: mode, predictedSet: predictedSet,
-                        sameWeekFrequency: sameWeekFrequency, overallFrequency: overallFrequency, maxOverallFrequency: maxOverallFrequency) + 1)) }
-                    let ticket = Double.random(in: 0..<weights.reduce(0, +))
-                    var total = 0.0
-                    var chosen = remaining.count - 1
-                    for index in remaining.indices {
-                        total += weights[index]
-                        if ticket < total { chosen = index; break }
-                    }
-                    row.append(remaining.remove(at: chosen))
-                }
-                row.sort()
-                if seen.insert(row).inserted {
-                    result.append(suggestedRow(from: row, predictedSet: predictedSet, sameWeekSet: sameWeekSet, sourceLabel: "Favoritter og historikk"))
-                }
-            }
-            if result.count < target {
-                for values in locked.completions(for: .lotto, limit: target) {
-                    if seen.insert(values.main).inserted {
-                        result.append(suggestedRow(from: values.main, predictedSet: predictedSet, sameWeekSet: sameWeekSet, sourceLabel: "Favoritter og historikk"))
-                    }
-                    if result.count == target { break }
-                }
-            }
-            return result
-        }
-
+        let target = min(rowCount, 500)
         var rows: [SuggestedRow] = []
         var seen: Set<[Int]> = []
+        if !locked.mainNumbers.isEmpty {
+            let fill = weightedNumbers.filter { !locked.mainNumbers.contains($0) }
+            let numbers = (locked.mainNumbers + fill.prefix(7 - locked.mainNumbers.count)).sorted()
+            rows.append(suggestedRow(from: numbers, predictedSet: predictedSet, sameWeekSet: sameWeekSet,
+                                     sourceLabel: "Favorittrekke"))
+            seen.insert(numbers)
+        }
 
         for historicalRow in sameWeekRows {
-            guard rows.count < rowCount else { break }
+            guard rows.count < target else { break }
 
             let mergedRow = buildRow(
                 startingWith: historicalRow,
@@ -161,7 +132,7 @@ enum LottoSuggestionEngine {
         }
 
         var offset = 0
-        while rows.count < rowCount && offset < 500 {
+        while rows.count < target && offset < 500 {
             let baseNumbers = predictedSet.isEmpty
                 ? Array(weightedNumbers.prefix(7))
                 : Array(predictedSet.sorted().prefix(7))
@@ -188,6 +159,14 @@ enum LottoSuggestionEngine {
             offset += 1
         }
 
+        if rows.count < target {
+            for values in LotteryFavoriteSelection().completions(for: .lotto, limit: target) {
+                if seen.insert(values.main).inserted {
+                    rows.append(suggestedRow(from: values.main, predictedSet: predictedSet, sameWeekSet: sameWeekSet, sourceLabel: "Variasjon"))
+                }
+                if rows.count == target { break }
+            }
+        }
         return rows
     }
 

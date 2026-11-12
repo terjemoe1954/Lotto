@@ -15,12 +15,19 @@ struct StartApp: App {
         let configuration = ModelConfiguration(cloudKitDatabase: .automatic)
 
         do {
+#if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--lotto-cloud-check") { LottoCloudDevelopment.monitor() }
+            if ProcessInfo.processInfo.arguments.contains("--initialize-cloudkit-schema") {
+                try LottoCloudDevelopment.initialize(configuration: configuration)
+            }
+#endif
             return try ModelContainer(
                 for: JackPot.self,
                 Result.self,
                 InternationalLotteryEntry.self,
                 LotteryDeliveryChange.self,
                 LotteryFavoriteChange.self,
+                LotteryLedgerEntry.self,
                 configurations: configuration
             )
         } catch {
@@ -31,6 +38,9 @@ struct StartApp: App {
     var body: some Scene {
         WindowGroup {
             LotteryHomeView()
+#if DEBUG
+                .task { await LottoCloudDevelopment.run(context: sharedModelContainer.mainContext) }
+#endif
         }
         .modelContainer(sharedModelContainer)
     }

@@ -11,7 +11,7 @@ struct OfflineBackupIntegrationTests {
     private func makeContainer(url: URL? = nil) throws -> ModelContainer {
         let config = url.map { ModelConfiguration(url: $0, cloudKitDatabase: .none) }
             ?? ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
-        return try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self,
+        return try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self, LotteryFavoriteChange.self, LotteryLedgerEntry.self,
                                   configurations: config)
     }
     private func seed(_ context: ModelContext) throws {
@@ -159,7 +159,7 @@ struct OfflineBackupIntegrationTests {
 struct BackupCheckTests {
     @Test func checkUsesAnIndependentStoreAndKeepsPositiveAndNegativeMarks() throws {
         let config = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
-        let container = try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self, configurations: config)
+        let container = try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self, LotteryFavoriteChange.self, LotteryLedgerEntry.self, configurations: config)
         let context = container.mainContext
         context.insert(Result(dato: LotteryCalendar.date("2026-11-14")!,nr1: 1,nr2: 2,nr3: 3,nr4: 4,nr5: 5,nr6: 6,nr7: 7))
         try context.save()
@@ -217,7 +217,7 @@ struct LegacyOwnRowBackupTests {
         #expect(result.warnings.count == 1)
         #expect(result.message.contains("128"))
         #expect(result.message.contains("11.04.2026"))
-        let container = try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self,
+        let container = try ModelContainer(for: JackPot.self, Result.self, InternationalLotteryEntry.self, LotteryDeliveryChange.self, LotteryFavoriteChange.self, LotteryLedgerEntry.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         try LottoBackupStore.restoreEverything(original, context: container.mainContext)
         let restored = try container.mainContext.fetch(FetchDescriptor<Result>())
