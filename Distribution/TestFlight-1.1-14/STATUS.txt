@@ -1,0 +1,11 @@
+Lotto 1.1 (14) – 15. november 2026
+
+Archive: SUCCEEDED
+Export: SUCCEEDED
+Upload: Uploaded Lotto / SUCCEEDED
+App Store Connect: ferdig behandlet, Ready to Test. Krypteringserklæring lagret etter uttrykkelig godkjenning fra Terje for build 14. Internal-gruppe med 1 tester er tilknyttet. Norske What to Test-notater lagret (Saved). Build-ID: a904fcda-5fc4-4db7-894a-c6dade196bf4.
+Distribusjon: intern TestFlight, eksisterende gruppe Internal.
+App Store-publisering: ikke utført.
+
+Rettelser: én indeks per forsidevisning, grunnarkiver klargjøres én gang per appøkt, isolert migrering av gamle leveringsmarkeringer, indikator settes i spillvelgerens binding, og bakgrunnsoppgaver kanselleres før nettverk/databaseendringer.
+119 tester i 22 suiter bestod før arkivering. Endelig Release-arkiv bygget uten feil. Eksportert pakke kontrollert for versjon/build, iPhone/iPad, gyldig signatur, iCloud Production og uendret container. Ingen SwiftData- eller CloudKit-modellendring. Den tidligere rapporterte krasjårsaken i fysisk TestFlight er ikke bekreftet; build 14 skal brukes til retest.

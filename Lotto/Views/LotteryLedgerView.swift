@@ -48,6 +48,7 @@ struct LotteryLedgerView: View {
                     DatePicker("Dato i måneden", selection: $month, displayedComponents: .date)
                     summary(monthly.map(\.record) + monthlyAutomatic.map(\.record), pending: monthlyAutomatic.filter { $0.prizeOre == nil }.count)
                 }
+                LotterySpendingSection(records: allRecords, month: month)
                 Section("Totalt registrert") { summary(allRecords, pending: automatic.filter { $0.prizeOre == nil }.count) }
                 Section("Spillevett") {
                     TextField("Egen månedsgrense i kroner (valgfritt)", text: $budget).keyboardType(.decimalPad)

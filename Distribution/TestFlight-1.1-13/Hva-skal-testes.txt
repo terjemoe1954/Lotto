@@ -1,0 +1,13 @@
+Lotto 1.1 (13) – felles forside og spillbytte
+
+• Lotto har samme oppbygging som Vikinglotto og Eurojackpot: Ny rekke, Forslag og Statistikk, fulgt av trekningsstatus og egne rekker/trekninger.
+• Bytt mellom alle tre spill. Meldingen Bytter spill … skal vises under overgangen. Prøv også raske bytter; siste valg skal bli stående.
+• Kontroller Ny rekke, Forslag, Statistikk og Innstillinger på iPhone og iPad.
+• Kontroller antall lagrede trekninger, siste dato og Hent nye trekninger. Oppdatering skal ha egen fremdriftsindikator.
+• Mine rekker viser bare valgt trekningsdato. Kontroller treff mot riktig trekning. Trekninger viser den offisielle historikken separat.
+• I Lotto finnes fortsatt Liste og eksport, Kontroller dine rekker og manuell trekningsregistrering.
+• Kontroller lesbarhet, rulling og brukermanual på begge skjermstørrelser.
+• Eksisterende rekker, favoritter, leveringsmarkeringer og spilleoversikt skal være beholdt.
+
+Nullstillingsfunksjonen fra build 12 er også med. Ta full backup før eventuell nullstilling; den gjelder også andre enheter via iCloud.
+Appen leverer ikke spill. Statistikk og favoritttall øker ikke vinnersjansen.

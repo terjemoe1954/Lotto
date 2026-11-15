@@ -136,6 +136,7 @@ enum InternationalLotteryUpdater {
     /// Each successful window is saved, so an interrupted initial import resumes safely.
     static func update(game: InternationalGame, context: ModelContext,
                        progress: (String) -> Void) async throws -> Int {
+        try Task.checkCancellation()
         var added = 0
         let existing = try context.fetch(FetchDescriptor<InternationalLotteryEntry>())
         var byDate = Dictionary(grouping: existing.filter { $0.gameID == game.rawValue && $0.isDraw },
@@ -156,6 +157,7 @@ enum InternationalLotteryUpdater {
             var request = URLRequest(url: url.url!)
             request.timeoutInterval = 30
             let (data, response) = try await URLSession.shared.data(for: request)
+            try Task.checkCancellation()
             guard let response = response as? HTTPURLResponse, response.statusCode == 200 else {
                 throw InternationalLotteryError.invalidResponse
             }

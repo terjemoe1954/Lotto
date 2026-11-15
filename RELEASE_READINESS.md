@@ -133,3 +133,9 @@ Final physical-device database snapshots match pre-update backups in every app
 model field except Z_OPT: 886 Lotto, 29 own Vikinglotto, 14 own Eurojackpot, zero
 duplicates, 52 active marks. Regnskap remains NOK 527 stake, NOK 0 prize and 17
 pending rows. Full backup SHA256 hashes unchanged. See ICLOUD_TESTING.md.
+
+
+## TestFlight 1.1 (11) — 14 November 2026
+Archived Release, exported an internal-only App Store Connect package, and passed Apple validation. Upload succeeded. ASC build ID 249f25bd-aab5-487d-a6de-1befa08d3cdf. Export compliance was initially Missing Compliance; Terje expressly approved saving None of the algorithms mentioned above after the automatic approval reviewer required specific approval. The declaration was saved, with Release code confirmed to use no app-implemented encryption beyond Apple OS services (CryptoKit appears only inside a DEBUG-only development helper). Existing Internal group (1 tester) includes build 11; Norwegian What to Test notes were saved. Final tester status showed Installed 1.1 (11). No public App Store submission or publication was made.
+
+Package and source hash checks, logs and test instructions: Distribution/TestFlight-1.1-11. Signed IPA is universal iPhone/iPad, version 1.1 build 11, iCloud Production with the existing container, get-task-allow false, code signature valid. No data model or CloudKit schema changes. Prior to archive, 112 tests in 20 suites passed; final manual and Release archive build passed. Physical feature/sync regression tests on build 11 remain for the user's iPhone/iPad testing; installation reported by ASC alone does not prove those workflows.

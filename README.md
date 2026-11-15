@@ -189,3 +189,38 @@ Sperren gjelder rekker som er kjent på enheten. Samtidig lagring av samme rekke
 på to enheter uten nett kan fortsatt gi en iCloud-konflikt etter synkronisering,
 siden CloudKit ikke støtter SwiftData-unikhetsregler. Vedlikeholdsverktøyet kan
 rydde slike kopier etter at enhetene er ferdig synkronisert.
+
+
+## Draw selection, own winnings and full systems (November 2026)
+- Lotto's Find Winner already filters by the selected draw date. International Mine rows now has an explicit draw selector, defaults to the latest stored draw, and displays only that date's own rows. Historical draws remain available separately.
+- Mine gevinster lists positive, known ordinary prize amounts for unique rows marked delivered, filtered by inclusive date range and game. It shows the sum and count of rows awaiting results/payouts; unknown amounts are never presented as zero. Manual ledger entries and national extra draws are excluded from this list.
+- Systemspill lets the user choose game, draw date, number counts and actual numbers. Full Cartesian combinations determine row count and estimated current cost (Lotto NOK 5, Vikinglotto NOK 8, Eurojackpot NOK 25 per ordinary row). This is local registration only, not ticket purchase or submission.
+- Supported number counts: Lotto 8–12; Vikinglotto 6–12 plus 1–5 Viking numbers, with at least one extra selection; Eurojackpot 5–10 plus 2–12 stars, with at least one extra selection. App limit: 2,000 constituent rows per system. Eurojackpot is a full-system calculator, not a claim that every combination is sold as an individual system by Norsk Tipping.
+- Systems are deliberately expanded into ordinary Result / InternationalLotteryEntry rows and saved together, skipping already saved combinations for the same game and date. They are not retained as a separate editable/grouped system coupon. Existing backup and CloudKit schemas are unchanged. They start unmarked; delivery must be confirmed by the user in the existing report workflow. Repeated purchases of the same constituent row and share ownership are not modeled; use the manual ledger where needed.
+- Prizes are calculated independently per constituent row, so a full system can receive several prizes in different tiers. Reduced systems, guarantees and syndicate share division are not supported.
+
+Rules checked against Norsk Tipping:
+https://www.norsk-tipping.no/lotteri/lotto/system
+https://www.norsk-tipping.no/lotteri/vikinglotto/system
+https://www.datocms-assets.com/138364/1769763003-appendiks-systemtabeller-kundevilkaar-og-spilleregler.pdf
+
+
+## Price and winning probabilities
+Registration of ordinary rows, Lotto/international suggestions and full systems now show row count, estimated price and chances for one draw. First prize is distinguished from any ordinary prize. Full-system any-prize probability uses hypergeometric pool-hit distributions, accounting for overlapping constituent rows. Ordinary suggestion batches show combined first-prize probability for their distinct rows, but explicitly show any-prize probability per row rather than pretending these correlated events are independent. Percentages and approximate one-in ratios are displayed.
+
+The explanation states that statistics and favorite numbers do not improve a single row's winning chance, that extra rows cost more, and that a prize need not mean a net profit. Calculations use current ordinary prize groups; national extra draws, SuperLotto and Joker are excluded. No ticket submission or model/backup changes are involved.
+
+Validation 2026-11-14: all 109 tests in 19 suites passed, including the three new odds tests. Result bundle: /private/tmp/Lotto-Systems/Logs/Test/Test-Lotto-2026.11.14_07-56-41-+0100.xcresult. Device Hub on iPhone 17 confirmed ordinary Vikinglotto row (one row / NOK 8) and system 7+1 (seven rows / NOK 56), both with first/ordinary chance labels and explanation. No rows were saved or marked delivered during this UI check.
+
+Official rule cross-checks:
+https://www.norsk-tipping.no/artikler/fem-nye-lotto-millionarer?returnCategory=lotteri&returnPage=1
+https://www.norsk-tipping.no/artikler/seks-hovedtall-og-ett-vikingtall-utloser-ca-69-mill-onsdag?returnPage=1
+https://www.norsk-tipping.no/artikler/en-norsk-millionaer-ca-792-millioner-i-potten-tirsdag131126?returnPage=1
+
+
+## Spending history and user manual (14 November 2026)
+Spilleoversikt now includes recorded monthly stake, change versus the prior month, the same monthly amount multiplied by 12, and recorded calendar-year stake. It uses the existing manual ledger and delivered-row records; no schema or backup changes. Future draw dates are excluded from these new spending totals. A 0–100% reduction slider shows an alternative monthly/yearly amount and reduced stake, without changing the ledger or the local monthly limit. A Swift Charts line chart and an expandable monthly amount/change list show the last 12 months ending in the selected month. A dashed line is the hypothetical lower level. Missing records are explicitly distinguished from proof of no gambling, and partial-month comparisons and extrapolations are explained.
+
+Validation: 112 tests in 20 suites passed, including month/year boundaries, exclusion of future dates and prizes, reduction arithmetic and correction updates. Result bundle: /private/tmp/Lotto-Systems/Logs/Test/Test-Lotto-2026.11.14_08-02-46-+0100.xcresult. Device Hub rendered the recorded NOK 100 month, NOK 1200 same-level annual comparison, NOK 75 / 900 at 25% reduction, and the chart. Existing test ledger data was left unchanged.
+
+The in-app manual (Settings > Hjelp > Åpne brukermanual) was rewritten to cover the new workflows and limitations. It explicitly distinguishes saving from actual delivery, corrects the old claim that saving a suggestion meant it was delivered, explains ordinary vs first-prize probabilities, system expansion, prize pending state, spending curves and lower-stake scenarios, local monthly-limit reminders, backup and iCloud. Hjelp also visibly states the app has no ads or commission from Norsk Tipping and is independent, not affiliated with or approved by Norsk Tipping. The manual explains historical statistics do not predict the next draw. Manual text changes were build-checked successfully after the test suite; no additional logic tests were added for prose-only changes. No TestFlight upload or App Store change was made.

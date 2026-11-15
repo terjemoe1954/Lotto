@@ -1,0 +1,11 @@
+Lotto 1.1 (13) – 14. november 2026
+
+Archive: SUCCEEDED
+Export: SUCCEEDED
+Upload: Uploaded Lotto / SUCCEEDED
+App Store Connect: ferdig behandlet, Ready to Test. Krypteringserklæring lagret etter uttrykkelig godkjenning fra Terje for build 13. Internal-gruppen er tilknyttet med 1 tester. Norske What to Test-notater lagret (Saved). Build-ID: 4d17b52d-6877-4598-954f-2c9706b7de7f.
+Distribusjon: intern TestFlight, eksisterende gruppe Internal.
+App Store-publisering: ikke utført.
+
+Ny Lotto-forside med samme oppbygging som de andre spillene. Delt handlingskomponent, trekningsstatus og egne rekker filtrert på dato. Synlig Bytter spill …-melding, kansellering av foreldede spillbytter og mindre gjentatt beregning ved sortering. Brukermanualen er oppdatert.
+115 eksisterende tester bestod etter forsideendringen. Endelig simulatorbygg og Release-arkiv bygget uten feil. Kontrollert på iPhone 17 og iPad Pro 13-inch (M5). Eksportert pakke kontrollert: 1.1 (13), iPhone/iPad, gyldig signatur, iCloud Production og uendret container. Ingen SwiftData- eller CloudKit-modellendring.

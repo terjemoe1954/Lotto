@@ -32,6 +32,7 @@ enum LottoDrawUpdater {
 
     @MainActor
     static func update(modelContext: ModelContext) async throws -> LottoDrawUpdateResult {
+        try Task.checkCancellation()
         let descriptor = FetchDescriptor<JackPot>(sortBy: [SortDescriptor(\JackPot.dato, order: .reverse)])
         let existing = try modelContext.fetch(descriptor)
         let calendar = Calendar(identifier: .gregorian)
@@ -45,6 +46,7 @@ enum LottoDrawUpdater {
         }
 
         let remoteDraws = try await fetchDraws(from: startDate, through: today)
+        try Task.checkCancellation()
         let existingDates = Set(existing.map { LottoDateSupport.normalize($0.dato) })
         let newDraws = remoteDraws.filter { !existingDates.contains(LottoDateSupport.normalize($0.date)) }
 

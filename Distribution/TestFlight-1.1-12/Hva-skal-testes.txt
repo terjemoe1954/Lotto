@@ -1,0 +1,12 @@
+Lotto 1.1 (12) – nullstilling av egne spill
+
+• Kontroller først at eksisterende rekker, favoritter og spilleoversikt er beholdt.
+• Åpne Innstillinger → Vedlikehold → Start på nytt med egne spill.
+• Kontroller at nullstilling er sperret før full backup er laget og kontrollert. Lagre gjerne backupen utenfor appen via delingsknappen.
+• Les iCloud-forklaringen: nullstillingen gjelder også andre enheter med samme Apple-konto. La begge enhetene synkronisere først, og unngå samtidige endringer.
+• Bare dersom du vil nullstille: bekreft iCloud-teksten og den siste dialogen. Egne rekker, leveringsmarkeringer og manuelle innsats-/gevinstposter skal fjernes; offisielle trekninger, tallstatistikk, favoritter og innstillinger skal beholdes.
+• Kontroller den andre enheten etter synkronisering. Usynkroniserte spill fra en frakoblet enhet kan dukke opp senere.
+• Prøv eventuelt «Gjenopprett hele backupen» for å få egne spill tilbake. La iCloud synkronisere før ny kontroll på den andre enheten.
+• Åpne brukermanualen og les «Start på nytt med egne spill». Kontroller lesbarhet på både iPhone og iPad.
+
+Appen leverer ikke spill. Statistikk og favoritttall øker ikke vinnersjansen.

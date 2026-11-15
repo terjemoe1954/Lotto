@@ -1,0 +1,12 @@
+Lotto 1.1 (14) – raskere spillbytte og tryggere avslutning
+
+• Kontroller at eksisterende egne rekker, favoritter, leveringsmarkeringer og spilleoversikt er beholdt.
+• Bytt mellom Lotto, Vikinglotto og Eurojackpot. Bytter spill … skal komme straks, og siste valgte spill skal åpnes. Prøv flere raske bytter.
+• Kontroller egne rekker for riktig dato, treff og trekningshistorikk. De nye indeksene skal ikke endre resultatene.
+• Gå til Hjem eller en annen app, vent litt og åpne Lotto igjen. Prøv også mens Hent nye trekninger kjører.
+• Avslutt Lotto ved å sveipe den bort fra appveksleren. Vent minst 15 sekunder og åpne appen igjen. Kontroller om TestFlight fortsatt melder krasj.
+• Gjenta på både iPhone og iPad. La iCloud synkronisere og kontroller at egne data fortsatt er riktige.
+• Hvis krasjmeldingen kommer igjen, send rapporten via TestFlight og noter enhet, spill og hva som skjedde rett før avslutningen.
+
+Rettelser: én trekningsindeks per visning, grunnarkiv klargjøres én gang per appøkt, isolert migrering av gamle leveringsmarkeringer og oppdateringsjobber som avbrytes i bakgrunnen. Den tidligere TestFlight-krasjårsaken er ikke bekreftet; denne builden skal brukes til fysisk retest.
+Appen leverer ikke spill. Statistikk og favoritttall øker ikke vinnersjansen.

@@ -95,6 +95,7 @@ struct MyLotteryView: View {
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
+                LotteryOddsSummary(game: .lotto)
                 VStack(alignment:.center) {
                     
                     DatePicker("Treknings Dato", selection: $result.dato, displayedComponents: .date)

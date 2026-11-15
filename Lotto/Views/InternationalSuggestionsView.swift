@@ -48,6 +48,7 @@ struct InternationalSuggestionsView: View {
                     Text("Dette er måter å velge tall på. Historiske mønstre gir ikke høyere vinnersjanse. Rekker lagres her; levering skjer hos Norsk Tipping.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
+                LotteryOddsSummary(game: LotteryReportGame(rawValue: game.rawValue)!, ordinaryRows: batch?.rows.count ?? count)
                 if let batch {
                     if batch.mode != .random { historySection(batch) }
                     if batch.rows.count < count {

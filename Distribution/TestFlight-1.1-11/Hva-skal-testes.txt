@@ -1,0 +1,12 @@
+Lotto 1.1 (11) – test på iPhone og iPad
+
+• Kontroller at eksisterende rekker, favoritter, leveringsmarkeringer og manuelle poster fortsatt finnes. Ta gjerne full sikkerhetskopi før testing.
+• Kontroller egne rekker for riktig trekningsdato i alle tre spill.
+• Åpne Mine gevinster og prøv periode og spillfilter. Bare leverte rekker med kjent ordinær gevinst tas med; manglende premier står som ventende.
+• Prøv Systemspill: velg antall tall, kontroller antall enkeltrekker, pris og vinnersjanse. Et fullt system lagres som enkeltrekker. Ikke merk testforslag som Levert med mindre de faktisk er levert hos Norsk Tipping.
+• Se pris og vinnersjanse ved vanlig registrering og forslag. Skill mellom førstepremie og ordinær premie, og per rekke kontra hele systemet. Alle gjelder én trekning.
+• Åpne Spilleoversikt, velg måned, kontroller månedsbeløp, endring, årsbeløp og kurve. Prøv lavere innsats med glidebryteren. Den endrer ikke historikk eller månedsgrense.
+• Åpne Innstillinger → Hjelp → Åpne brukermanual. Kontroller lesbarhet på både iPhone og iPad.
+• Kontroller iCloud mellom enhetene med egne ordinære data og ta vare på backup. Ingen ny CloudKit-modell eller produksjonsskjema er innført.
+
+Appen leverer ikke spill. Statistikk og favoritttall øker ikke enkeltrekkens vinnersjanse. Pris og endelig gevinst må kontrolleres hos Norsk Tipping.

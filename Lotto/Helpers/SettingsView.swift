@@ -49,6 +49,7 @@ struct SettingsView: View {
     @State private var alertMessage = ""
     @State private var showingAlert = false
     @State private var showingManual = false
+    @State private var showingOwnGamesReset = false
     @State private var showingDuplicateCleanup = false
     @State private var showingPrivacy = false
     @State private var isUpdatingDraws = false
@@ -112,6 +113,7 @@ struct SettingsView: View {
                 }
 
                 Section("Vedlikehold") {
+                    Button("Start på nytt med egne spill") { showingOwnGamesReset = true }
                     Button("Rydd dupliserte egne rekker") { showingDuplicateCleanup = true }
                     Text("Beholder én kopi per spill, trekningsdato og tall. Tar en kontrollert full backup før sletting.")
                         .font(.footnote).foregroundStyle(.secondary)
@@ -140,9 +142,11 @@ struct SettingsView: View {
                 }
 
                 Section("Hjelp") {
-                    Button("Apne manual") {
+                    Button("Åpne brukermanual") {
                         showingManual = true
                     }
+                    Text("Uavhengig verktøy uten reklame. Utvikleren mottar ikke reklameinntekter eller provisjon fra Norsk Tipping. Appen er ikke tilknyttet eller godkjent av Norsk Tipping.")
+                        .font(.footnote).foregroundStyle(.secondary)
                 }
 
                 Section("App") {
@@ -219,6 +223,13 @@ struct SettingsView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(alertMessage)
+            }
+            .sheet(isPresented: $showingOwnGamesReset) {
+                LotteryOwnGamesResetView(settings: LottoBackupSettings(
+                    tolerance: toleranse, appearanceModeRawValue: appearanceMode.rawValue,
+                    excludeHighestGapFromAverage: excludeHighestGapFromAverage,
+                    weeklyRegisteredRows: UserDefaults.standard.string(forKey: WeeklyLotteryDelivery.storageKey) ?? "",
+                    lottoTransferredRows: UserDefaults.standard.string(forKey: "transferredResultKeys") ?? ""))
             }
             .sheet(isPresented: $showingDuplicateCleanup) {
                 LotteryDuplicateCleanupView(settings: LottoBackupSettings(
@@ -375,55 +386,131 @@ private struct LottoManualView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     manualSection(
-                        title: "Om forslagene",
+                        title: "Om appen og ansvarlig bruk",
                         lines: [
-                            "Forslagene bygger på historiske intervaller, trekninger fra samme ukenummer i tidligere år og generell frekvens.",
-                            "Intervalltreff er tall der en beregnet historisk intervallrytme ligger nær valgt dato, innen toleransen i innstillingene. Dette er ikke en prognose.",
-                            "Samme uke betyr tall som har forekommet i historiske trekninger i samme ukenummer som den valgte datoen."
+                            "Appen er et uavhengig verktøy for historikk, statistikk, egne rekker og oversikt over innsats og gevinster i Lotto, Vikinglotto og Eurojackpot. Den selger ikke spill, tar ikke imot innsatser og betaler ikke ut gevinster.",
+                            "Appen inneholder ikke reklame. Utvikleren mottar ikke reklameinntekter eller provisjon fra Norsk Tipping. Appen er ikke tilknyttet eller godkjent av Norsk Tipping.",
+                            "Statistikk og favoritttall øker ikke sjansen for at en enkeltrekke vinner. Historiske intervaller og mønstre forutsier ikke neste trekning. Alle gyldige enkeltrekker i samme spill har lik sjanse.",
+                            "Flere ulike rekker koster mer. Selv mange rekker gir ingen garanti for gevinst, og du kan tape hele innsatsen. En premie betyr ikke nødvendigvis at du har spilt med overskudd."
                         ]
                     )
 
                     manualSection(
-                        title: "Hvordan tallene velges",
+                        title: "Lagre rekker og markere Levert",
                         lines: [
-                            "Historikk legger mest vekt på intervalltreff og samme uke i tidligere år.",
-                            "Blandet fordeler vekten jevnere mellom historiske intervaller, samme uke og frekvens.",
-                            "Variasjon sprer tallvalgene mer. Ingen av modusene gir høyere vinnersjanse.",
-                            "Alle forslag blir kontrollert slik at de inneholder 7 unike tall mellom 1 og 34."
+                            "Velg spill og riktig trekningsdato før du lagrer tallene. Lotto trekkes lørdag, Vikinglotto onsdag og Eurojackpot tirsdag og fredag.",
+                            "Lagre oppretter en rekke i appen. Det er ikke innlevering eller betaling hos Norsk Tipping. Ny rekke åpner registreringsskjermen for kontroll og lagring, ikke en kjøpsflyt.",
+                            "Merk en rekke som Levert / registrert hos Norsk Tipping i Ukesrapport først når du faktisk har levert den der. Du kan fjerne markeringen ved feil. Lagrede forslag blir ikke automatisk regnet som kjøpt.",
+                            "Én unik rekke per spill og trekningsdato telles én gang. Har du kjøpt samme rekke flere ganger, føres den ekstra innsatsen og eventuell ekstra gevinst manuelt i Spilleoversikt. Unngå dobbeltføring."
                         ]
                     )
 
                     manualSection(
-                        title: "Knapper i forslag",
+                        title: "Kontroll mot riktig trekning",
                         lines: [
-                            "Lagre lagrer rekken direkte som en innlevert rekke pa valgt dato.",
-                            "Levere apner rekken i skjermbildet for Levere, ferdig utfylt med riktig dato, slik at du kan kontrollere eller endre den for lagring.",
-                            "Print lager en utskriftsvennlig rapport med forslagene."
+                            "Alle tre spill har Ny rekke, Forslag og Statistikk på forsiden, samt antall lagrede trekninger, siste trekningsdato og Hent nye trekninger.",
+                            "Mine rekker har et eget valg for Trekningsdato og viser bare rekker for valgt dato i alle tre spill. Trekninger viser den offisielle historikken separat. I Lotto gir Liste og eksport tilgang til utskrift og eksport, mens Kontroller dine rekker åpner den utvidede vinnerkontrollen.",
+                            "Treff beregnes mot lagret resultat for samme spill og dato. Rekker uten resultat venter på trekningen. Kontroller alltid endelig gevinst hos Norsk Tipping."
                         ]
                     )
 
                     manualSection(
-                        title: "Eksport og backup",
+                        title: "Pris og vinnersjanse",
                         lines: [
-                            "I Mine rekker kan du markere valgte rekker og eksportere til Excel som CSV eller til Pages som TXT.",
-                            "Hvis ingen rekker er markert, eksporteres alle rekker i gjeldende filter.",
-                            "Backup i settings eksporterer og gjenoppretter baade trekninger, egne rekker og appinnstillinger."
+                            "Ved registrering, forslag og systemspill vises antall enkeltrekker, beregnet pris og teoretisk vinnersjanse for én trekning etter dagens regler. Pris må kontrolleres hos Norsk Tipping.",
+                            "Førstepremie og ordinær premie vises hver for seg, som prosent og omtrent 1 av et antall muligheter. Førstepremie betyr å få del i førstepremiegruppen; det er ingen garanti for å vinne hele potten alene.",
+                            "For vanlige forslag vises samlet førstepremiesjanse for ulike rekker, men ordinær premiesjanse per enkeltrekke. Ordinære premiesjanser kan ikke bare ganges med antall rekker, fordi rekkene kan dele tall.",
+                            "For et fullt system vises førstepremiesjanse og sjansen for minst én ordinær premie for hele systemet. Beregningen tar hensyn til overlapp mellom delrekkene. Supertrekning, nasjonale tilleggstrekninger og Joker er ikke inkludert."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Systemspill",
+                        lines: [
+                            "Åpne Systemspill. Velg spill, trekningsdato, antall hovedtall og eventuelle tilleggstall. Velg deretter de faktiske tallene. Antall enkeltrekker følger av alle kombinasjonene; pris og sjanse oppdateres når antall tall endres.",
+                            "Appen støtter fulle systemer med inntil 2000 enkeltrekker. Lotto bruker 8–12 tall. Vikinglotto bruker 6–12 hovedtall og 1–5 vikingtall. Eurojackpot-beregneren bruker 5–10 hovedtall og 2–12 stjernetall. Minst én tallgruppe må være større enn i en vanlig rekke.",
+                            "Lagre systemet lagrer alle nye delrekker som vanlige enkeltrekker. Allerede lagrede kombinasjoner for samme spill og dato hoppes over. Systemet beholdes ikke som en egen samlet, redigerbar kupong. Levering og betaling skjer hos Norsk Tipping.",
+                            "Hver delrekke kan få sin ordinære premie. Et system kan derfor ha flere premier i ulike premiegrupper, som summeres i gevinstoversikten. Reduserte systemer, garantier og andelsfordeling støttes ikke. Beregneren lover ikke at alle kombinasjoner kan kjøpes som et enkelt system hos Norsk Tipping."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Mine gevinster",
+                        lines: [
+                            "Åpne Mine gevinster, velg Fra og Til og med, og eventuelt ett spill. Listen viser dine unike, leverte rekker med kjent ordinær gevinst, med beløp, antall gevinstrekker og sum.",
+                            "Oppdater premier henter ferdigbehandlede premiebeløp. Manglende resultat eller premie vises som ventende, ikke som en bekreftet gevinst på null kroner.",
+                            "Manuelle beløp, Joker og nasjonale tilleggstrekninger inngår ikke i denne listen. Før disse manuelt i Spilleoversikt, og kontroller alltid beløpene mot Norsk Tipping."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Spilleoversikt og månedsbeløp",
+                        lines: [
+                            "Spilleoversikt samler automatisk innsats fra Levert-markeringene og manuelle poster. Velg en dato i måneden du vil undersøke. Du ser innsats, registrert eller beregnet gevinst og netto. Uavklarte premier gjør netto foreløpig.",
+                            "Innsats og årsbeløp viser registrert innsats til nå i valgt måned, endring fra måneden før, samme månedsbeløp ganget med 12 og faktisk registrert innsats i valgt kalenderår. Fremtidige trekningsdatoer er utelatt fra disse innsatsberegningene.",
+                            "Årsbeløpet er en sammenligning, ikke en prognose for resten av året. En påbegynt måned er ikke direkte sammenlignbar med en hel måned. Gevinster trekkes ikke fra innsatsen i innsatskurven."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Prøv lavere innsats og les kurven",
+                        lines: [
+                            "Glidebryteren Prøv lavere innsats lar deg redusere valgt måneds registrerte innsats med 0–100 prosent. Beløpene viser lavere månedsnivå, tilsvarende årsbeløp og hvor mye mindre innsats det blir per måned og over 12 måneder.",
+                            "Eksempel: 1000 kr per måned tilsvarer 12000 kr over 12 måneder. Med 25 prosent lavere innsats blir det 750 kr per måned, 9000 kr over 12 måneder og 3000 kr mindre innsats.",
+                            "Glidebryteren endrer ikke historikken, faktisk levering eller månedsgrensen. Den anslår heller ikke fremtidige gevinster.",
+                            "Kurven viser registrert innsats i de 12 månedene fram til valgt måned. Stiplet linje viser det lavere månedsnivået du prøver. Åpne Månedsbeløp og endring i kroner for listen med månedssummer og opp- eller nedgang. Null betyr ingen registrert innsats, ikke nødvendigvis at du ikke har spilt."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Månedsgrense og oversiktens begrensninger",
+                        lines: [
+                            "Du kan sette en egen månedsgrense i Spilleoversikt. Den sammenlignes med samlet registrert innsats før gevinster trekkes fra og gir en påminnelse når grensen er nådd.",
+                            "Grensen stopper ikke spill hos Norsk Tipping og lagres på denne enheten. Oversikten blir bare så komplett som leveringsmarkeringene og de manuelle postene dine. Den er ikke en automatisk kopi av spillkontoen din.",
+                            "Ta gjerne en pause. Spill bare for penger du har råd til å tape, og ikke spill for å vinne tilbake tap. Lenken Spillevett hos Norsk Tipping finnes i Spilleoversikt."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Statistikk, forslag og favoritttall",
+                        lines: [
+                            "Statistikken viser frekvens, intervaller og historiske trekninger. Forslag kan bygge på historiske intervaller, samme ukenummer i tidligere år, frekvens eller tilfeldig variasjon. Intervalltreff er en beskrivelse av historikken, ikke en prognose.",
+                            "Favoritttall er valgfritt. Når funksjonen er på, brukes favorittene i én favorittrekke, og manglende tall fylles inn. Ingen modus eller favoritt gir høyere vinnersjanse for en enkeltrekke.",
+                            "Lagre lagrer et forslag i appen. Kontroller / endre eller Levere åpner rekken for kontroll før lagring. Print eller deling lager en rapport, ikke en innlevering."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Ukesrapport, eksport og backup",
+                        lines: [
+                            "Ukesrapport samler rekker for valgt uke og spill. Du kan velge rekker, markere dem som faktisk levert og eksportere eller skrive ut en oversikt. Systemets delrekker tas med som enkeltrekker.",
+                            "Lotto-listen kan eksporteres som CSV til regneark eller TXT til tekstbehandling. Valgte rekker brukes ved eksport; uten valg brukes rekkene i gjeldende filter.",
+                            "Full sikkerhetskopi inneholder trekninger, egne rekker, leveringsmarkeringer, favoritter, manuelle spilleposter og innstillinger. Bare trekninger er et eget begrenset eksportvalg. Ta en full kopi før større endringer.",
+                            "Offentlige premietabeller lagres lokalt og hentes på nytt på andre enheter. Påminnelsen om månedsgrense er lokal. Eksporterte filer må du selv oppbevare og dele på en trygg måte."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Start på nytt med egne spill",
+                        lines: [
+                            "Velg Innstillinger → Vedlikehold → Start på nytt med egne spill. Lag og kontroller full backup først. Du kan lagre eller dele filen utenfor appen før du fortsetter.",
+                            "Etter egen bekreftelse fjernes egne rekker, systemenes delrekker, Levert-markeringer og manuelle innsatser og gevinster. Offisielle trekninger, tallstatistikk, favoritter og innstillinger beholdes.",
+                            "Nullstillingen gjelder også andre enheter med samme Apple-konto via iCloud. La enhetene synkronisere først, og unngå samtidige endringer. Usynkroniserte spill på en frakoblet enhet kan komme tilbake senere. For å angre må du gjenopprette hele backupen."
                         ]
                     )
 
                     manualSection(
                         title: "iCloud og dubletter",
                         lines: [
-                            "Ved bruk av flere enheter kan SwiftData og CloudKit midlertidig lage dubletter under synkronisering.",
-                            "Appen rydder automatisk dubletter i trekninger ved oppstart og nar appen blir aktiv igjen.",
-                            "Innlesing av historiske trekninger fra lotto.json er ogsa strammet inn for a redusere risikoen for doble poster."
+                            "Når iCloud er tilgjengelig, kan appdata synkroniseres mellom enheter. Synkronisering kan ta tid. Kontroller at riktige rekker og leveringsmarkeringer er kommet fram før du stoler på oversikten på en annen enhet.",
+                            "Appen forebygger og rydder dubletter. Sletting av en lagret rekke fjerner ikke automatisk historikken over det du har merket som levert. Korriger feil markering i Spilleoversikt."
                         ]
                     )
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
             }
-            .navigationTitle("Manual")
+            .navigationTitle("Brukermanual")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

@@ -1,0 +1,16 @@
+Lotto 1.1 (11)
+14. november 2026
+
+Release-arkiv: /Users/terjemoe/Library/Developer/Xcode/Archives/2026-11-14/Lotto 1.1 (11).xcarchive
+IPA: Export/Lotto.ipa
+
+Archive: SUCCEEDED
+Export: SUCCEEDED
+Apple validation: Validated Lotto / SUCCEEDED
+Upload: Uploaded Lotto / SUCCEEDED
+App Store Connect: ferdig behandlet; krypteringsopplysning lagret etter særskilt godkjenning fra Terje i chatten. Build 11 knyttet til Internal (1 tester). Norske What to Test-notater lagret. Testerlisten viste Installed 1.1 (11) ved siste kontroll. Build-ID: 249f25bd-aab5-487d-a6de-1befa08d3cdf.
+Distribusjon: intern TestFlight, eksisterende gruppe Internal
+App Store-publisering: ikke utført
+
+Pakke kontrollert: versjon/build, signatur, iPhone/iPad (UIDeviceFamily 1,2), iCloud Production med uendret container og debug-tilgang av. Ingen testbundle i IPA. Kildehashene stemmer med kildekoden ved arkivering. Ingen SwiftData- eller CloudKit-modellendring.
+Testene før arkivering: 112 tester i 20 suiter bestod. Manualendringen og endelig Release-arkiv er bygget uten feil. App Store Connect bekrefter installasjon hos testeren, men vi har ikke utført funksjonskontroll av build 11 på de fysiske enhetene.

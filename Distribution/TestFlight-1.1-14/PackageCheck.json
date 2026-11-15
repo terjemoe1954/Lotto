@@ -1,0 +1,15 @@
+{
+  "version": "1.1",
+  "build": "14",
+  "bundle": "com.terjemoe.Lotto",
+  "devices": [
+    1,
+    2
+  ],
+  "iCloudEnvironment": "Production",
+  "iCloudContainers": [
+    "iCloud.iCloude.com.terjemoe.Lottery"
+  ],
+  "debug": false,
+  "containsTests": false
+}

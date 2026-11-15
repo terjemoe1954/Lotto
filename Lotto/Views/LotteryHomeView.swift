@@ -3,9 +3,11 @@ import SwiftData
 
 struct LotteryHomeView: View {
     @AppStorage("selectedLottery") private var selection = "lotto"
+    @State private var displayedSelection = UserDefaults.standard.string(forKey: "selectedLottery") ?? "lotto"
+    @State private var switchingGame = false
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var preparedArchive = false
     @Environment(\.modelContext) private var context
-    @Query private var lottoRows: [Result]
-    @Query private var internationalRows: [InternationalLotteryEntry]
     @State private var migrationError: String?
     @AppStorage("favorites.introSeen") private var favoritesIntroSeen = false
     @Query private var favoriteChanges: [LotteryFavoriteChange]
@@ -13,9 +15,15 @@ struct LotteryHomeView: View {
     @State private var favoriteIntro = false
     @State private var showWeeklyReport = false
     @State private var showLedger = false
+    @State private var showWinnings = false
+    @State private var showSystem = false
     var body: some View {
         VStack(spacing: 0) {
-            Picker("Spill", selection: $selection) {
+            Picker("Spill", selection: Binding(get: { selection }, set: { game in
+                guard game != selection else { return }
+                switchingGame = true
+                selection = game
+            })) {
                 Text("Lotto").tag("lotto")
                 ForEach(InternationalGame.allCases) { game in Text(game.title).tag(game.rawValue) }
             }
@@ -29,12 +37,58 @@ struct LotteryHomeView: View {
                 Button("Ukesrapport", systemImage: "printer") { showWeeklyReport = true }
                     .buttonStyle(.bordered)
             }.padding(.horizontal).padding(.bottom, 4)
+            HStack {
+                Button("Mine gevinster", systemImage: "list.bullet") { showWinnings = true }
+                Button("Systemspill", systemImage: "square.grid.3x3") { showSystem = true }
+            }.buttonStyle(.bordered)
             Button("Spilleoversikt", systemImage: "list.bullet.rectangle") { showLedger = true }
                 .buttonStyle(.bordered).padding(.bottom, 4)
-            if let game = InternationalGame(rawValue: selection) {
-                InternationalLotteryView(game: game).id(game)
-            } else {
-                FirstView()
+            Group {
+                if let game = InternationalGame(rawValue: displayedSelection) {
+                    InternationalLotteryView(game: game).id(game)
+                } else {
+                    FirstView()
+                }
+            }
+            .allowsHitTesting(!switchingGame)
+            .overlay {
+                if switchingGame {
+                    ProgressView("Bytter spill …")
+                        .padding(24)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                        .accessibilityLabel("Bytter spill. Vent litt.")
+                }
+            }
+        }
+        .task(id: selection) {
+            guard displayedSelection != selection else { switchingGame = false; return }
+            switchingGame = true
+            do {
+                // Give the progress indicator a display frame before constructing the next screen.
+                // Cancellation prevents an older selection from replacing a newer one.
+                try await Task.sleep(for: .milliseconds(100))
+                try Task.checkCancellation()
+                displayedSelection = selection
+                try await Task.sleep(for: .milliseconds(100))
+                try Task.checkCancellation()
+                switchingGame = false
+            } catch is CancellationError { }
+            catch { switchingGame = false }
+        }
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            do {
+                if !preparedArchive {
+                    try Task.checkCancellation()
+                    try LotteryArchivePreparation.prepare(context: context)
+                    preparedArchive = true
+                }
+                try Task.checkCancellation()
+                _ = try await LottoDrawUpdater.update(modelContext: context)
+            } catch is CancellationError { }
+            catch {
+                // Network failures must not interrupt offline use. Archive failures are visible.
+                if !preparedArchive { migrationError = "Kunne ikke klargjøre grunnarkivet: \(error.localizedDescription)" }
             }
         }
         .sheet(isPresented: $showFavorites) { LotteryFavoritesView(introductory: favoriteIntro) }
@@ -44,13 +98,11 @@ struct LotteryHomeView: View {
                 else { favoritesIntroSeen = true }
             }
         }
+        .sheet(isPresented: $showWinnings) { LotteryWinningsView() }
+        .sheet(isPresented: $showSystem) { LotterySystemView(initialGame: LotteryReportGame(rawValue: selection) ?? .lotto) }
         .sheet(isPresented: $showLedger) { LotteryLedgerView() }
         .sheet(isPresented: $showWeeklyReport) { WeeklyLotteryReportView() }
-        .task(id: WeeklyLotteryReport.rows(lotto: lottoRows, international: internationalRows).map(\.id)) {
-            do {
-                try LotteryDeliverySync.migrateLegacy(rows: WeeklyLotteryReport.rows(lotto: lottoRows, international: internationalRows), context: context)
-            } catch { context.rollback(); migrationError = "Kunne ikke flytte registreringsmarkeringer: \(error.localizedDescription)" }
-        }
+        .background { LotteryLegacyMigrationView(error: $migrationError) }
         .alert("Registreringsmarkeringer", isPresented: Binding(get: { migrationError != nil }, set: { if !$0 { migrationError = nil } })) {
             Button("OK", role: .cancel) { }
         } message: { Text(migrationError ?? "") }
@@ -59,6 +111,8 @@ struct LotteryHomeView: View {
 
 struct InternationalLotteryView: View {
     let game: InternationalGame
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var updateTask: Task<Void, Never>?
     @Environment(\.modelContext) private var context
     @Query(sort: \InternationalLotteryEntry.date, order: .reverse) private var entries: [InternationalLotteryEntry]
     @AppStorage(LottoAppPreferences.appearanceModeKey) private var appearance = AppearanceMode.system.rawValue
@@ -71,40 +125,28 @@ struct InternationalLotteryView: View {
     @State private var message: String?
     @State private var showingDraws = false
     @State private var showAll = false
-    private var draws: [InternationalLotteryEntry] {
-        var dates = Set<String>()
-        return entries.filter { $0.gameID == game.rawValue && $0.isDraw && dates.insert(LotteryCalendar.text($0.date)).inserted }
-    }
-    private var rows: [InternationalLotteryEntry] { entries.filter { $0.gameID == game.rawValue && !$0.isDraw } }
-    private var visible: [InternationalLotteryEntry] {
-        let source = showingDraws ? draws : rows.sorted {
-            let a = matches($0), b = matches($1)
-            if a.main != b.main { return a.main > b.main }
-            if a.extra != b.extra { return a.extra > b.extra }
-            if $0.date != $1.date { return $0.date > $1.date }
-            return $0.numbersText < $1.numbersText
-        }
-        return showAll ? source : Array(source.prefix(50))
-    }
-
+    @State private var selectedDraw: Date?
     var body: some View {
-        NavigationStack {
+        let snapshot = InternationalHomeSnapshot(entries: entries, game: game, selectedDate: selectedDraw)
+        let draws = snapshot.draws
+        let rows = snapshot.rows
+        let drawDates = snapshot.dates
+        let activeDate = snapshot.activeDate
+        let source = showingDraws ? draws : snapshot.selectedRows
+        let visible = showAll ? source : Array(source.prefix(50))
+        return NavigationStack {
             List {
                 Section {
-                    Text("\(game.mainCount) hovedtall av \(game.mainMaximum) + \(game.extraCount) \(game.extraTitle.lowercased()) av \(game.extraMaximum)")
-                    Text("Trekning \(game.schedule)").foregroundStyle(.secondary)
-                    HStack {
-                        Button("Ny rekke", systemImage: "plus.circle") { editor = .row }
-                        Spacer()
-                        Button("Forslag", systemImage: "wand.and.stars") { showSuggestions = true }
-                    }.buttonStyle(.bordered)
-                    Button("Statistikk", systemImage: "chart.bar") { showStatistics = true }
+                    LotteryGameActionsView(
+                        rules: "\(game.mainCount) hovedtall av \(game.mainMaximum) + \(game.extraCount) \(game.extraTitle.lowercased()) av \(game.extraMaximum)",
+                        schedule: game.schedule, newRow: { editor = .row },
+                        suggestions: { showSuggestions = true }, statistics: { showStatistics = true })
                 }
                 Section("Resultater fra Norsk Tipping") {
                     LabeledContent("Lagrede trekninger", value: "\(draws.count)")
                     if let latest = draws.first { LabeledContent("Siste trekning", value: LotteryCalendar.text(latest.date)) }
                     Button {
-                        Task { await update() }
+                        updateTask = Task { await update() }
                     } label: {
                         HStack {
                             if updating { ProgressView() }
@@ -120,8 +162,14 @@ struct InternationalLotteryView: View {
                         Text("Mine rekker (\(rows.count))").tag(false)
                         Text("Trekninger (\(draws.count))").tag(true)
                     }.pickerStyle(.segmented)
+                    if !showingDraws, let activeDate {
+                        Picker("Trekningsdato", selection: Binding(get: { activeDate }, set: { selectedDraw = $0; showAll = false })) {
+                            ForEach(drawDates, id: \.self) { date in Text(LotteryCalendar.text(date)).tag(date) }
+                        }
+                        Text("Bare dine rekker for valgt trekning vises.").font(.footnote).foregroundStyle(.secondary)
+                    }
                     if visible.isEmpty {
-                        Text(showingDraws ? "Ingen trekninger ennå. Trykk Hent nye trekninger." : "Ingen egne rekker ennå. Lagre en rekke eller prøv Forslag.")
+                        Text(showingDraws ? "Ingen trekninger ennå. Trykk Hent nye trekninger." : "Ingen egne rekker for valgt trekning. Lagre en rekke eller velg en annen dato.")
                             .foregroundStyle(.secondary)
                     }
                     if !showingDraws {
@@ -129,15 +177,16 @@ struct InternationalLotteryView: View {
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     ForEach(visible) { entry in
+                        let match = snapshot.matches[entry.persistentModelID]
                         VStack(alignment: .leading, spacing: 5) {
                             Text(LotteryCalendar.text(entry.date)).font(.caption).foregroundStyle(.secondary)
                             Text(entry.numbersText).font(.headline).monospacedDigit()
                             if !entry.isDraw {
-                                Text(matchText(entry)).font(.subheadline).foregroundStyle(.secondary)
-                                if isPrize(entry) { Label("Gevinst – kontroller hos Norsk Tipping", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
+                                Text(match.map { "\($0.main) hovedtall + \($0.extra) \(game.extraTitle.lowercased()) rette. Sjekk eventuell premie hos Norsk Tipping." } ?? "Venter på trekningsresultat").font(.subheadline).foregroundStyle(.secondary)
+                                if (match?.prize == true) { Label("Gevinst – kontroller hos Norsk Tipping", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
                             }
                         }
-                        .listRowBackground(isPrize(entry) ? Color.green.opacity(0.15) : Color.clear)
+                        .listRowBackground((match?.prize == true) ? Color.green.opacity(0.15) : Color.clear)
                         .contextMenu {
                             ShareLink(item: "\(game.title) \(LotteryCalendar.text(entry.date))\n\(entry.numbersText)") {
                                 Label("Del rekke", systemImage: "square.and.arrow.up")
@@ -147,7 +196,7 @@ struct InternationalLotteryView: View {
                             }
                         }
                     }
-                    if !showAll && (showingDraws ? draws.count : rows.count) > 50 {
+                    if !showAll && source.count > 50 {
                         Button("Vis alle") { showAll = true }
                     }
                 }
@@ -168,31 +217,14 @@ struct InternationalLotteryView: View {
             .alert("\(game.title)", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
                 Button("OK", role: .cancel) { }
             } message: { Text(message ?? "") }
-            .task {
-                do { try InternationalLotteryUpdater.seed(context: context) }
-                catch { message = "Kunne ikke lese grunnarkivet: \(error.localizedDescription)" }
+            .onDisappear { updateTask?.cancel() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase != .active { updateTask?.cancel() }
             }
         }
         .preferredColorScheme((AppearanceMode(rawValue: appearance) ?? .system).colorScheme)
     }
 
-    private func matches(_ row: InternationalLotteryEntry) -> (main: Int, extra: Int) {
-        guard let draw = draws.first(where: { LotteryCalendar.day($0.date) == LotteryCalendar.day(row.date) }) else { return (-1,-1) }
-        return (Set(row.mainNumbers).intersection(draw.mainNumbers).count, Set(row.extraNumbers).intersection(draw.extraNumbers).count)
-    }
-    private func isPrize(_ row: InternationalLotteryEntry) -> Bool {
-        guard !row.isDraw else { return false }
-        let count = matches(row)
-        return LotteryPrizeRules.qualifies(game: LotteryReportGame(rawValue: game.rawValue)!, main: count.main, extra: count.extra, date: row.date)
-    }
-    private func matchText(_ row: InternationalLotteryEntry) -> String {
-        guard let draw = draws.first(where: { LotteryCalendar.day($0.date) == LotteryCalendar.day(row.date) }) else {
-            return "Venter på trekningsresultat"
-        }
-        let main = Set(row.mainNumbers).intersection(draw.mainNumbers).count
-        let extra = Set(row.extraNumbers).intersection(draw.extraNumbers).count
-        return "\(main) hovedtall + \(extra) \(game.extraTitle.lowercased()) rette. Sjekk eventuell premie hos Norsk Tipping."
-    }
     private func delete(_ entry: InternationalLotteryEntry) {
         context.delete(entry)
         do { try context.save() } catch { context.rollback(); message = error.localizedDescription }
@@ -205,7 +237,9 @@ struct InternationalLotteryView: View {
             let count = try await InternationalLotteryUpdater.update(game: game, context: context) { progress = $0 }
             message = "La til \(count) nye trekninger."
         } catch is CancellationError { }
-        catch { message = "Kunne ikke fullføre oppdateringen. Lagrede trekninger er tilgjengelige, og du kan prøve igjen. \(error.localizedDescription)" }
+        catch {
+            guard !Task.isCancelled else { return }
+            message = "Kunne ikke fullføre oppdateringen. Lagrede trekninger er tilgjengelige, og du kan prøve igjen. \(error.localizedDescription)" }
     }
 }
 
@@ -240,6 +274,7 @@ struct LotteryEntryEditor: View {
                     DatePicker("Trekningsdato", selection: $date, displayedComponents: .date)
                     Text("Trekning \(game.schedule)").font(.caption).foregroundStyle(.secondary)
                 }
+                if mode == .row { LotteryOddsSummary(game: LotteryReportGame(rawValue: game.rawValue)!) }
                 Section("Hovedtall: \(main.count) av \(game.mainCount)") {
                     numberGrid(maximum: game.mainMaximum, limit: game.mainCount, selection: $main)
                 }
@@ -310,5 +345,58 @@ struct LotteryEntryEditor: View {
             try context.save()
             dismiss()
         } catch { context.rollback(); errorMessage = error.localizedDescription }
+    }
+}
+
+/// Shared action layout keeps all three game fronts consistent, including Dynamic Type.
+struct LotteryGameActionsView: View {
+    let rules: String
+    let schedule: String
+    let newRow: () -> Void
+    let suggestions: () -> Void
+    let statistics: () -> Void
+    var body: some View {
+        Text(rules)
+        Text("Trekning \(schedule)").foregroundStyle(.secondary)
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                Button("Ny rekke", systemImage: "plus.circle", action: newRow)
+                Spacer()
+                Button("Forslag", systemImage: "wand.and.stars", action: suggestions)
+            }
+            VStack(alignment: .leading) {
+                Button("Ny rekke", systemImage: "plus.circle", action: newRow)
+                Button("Forslag", systemImage: "wand.and.stars", action: suggestions)
+            }
+        }.buttonStyle(.bordered)
+        Button("Statistikk", systemImage: "chart.bar", action: statistics)
+    }
+}
+
+/// Isolate legacy migration queries from picker/progress state changes in the parent.
+/// They update for incoming data, not for each frame of a game switch.
+private struct LotteryLegacyMigrationView: View {
+    @Environment(\.modelContext) private var context
+    @Query private var lottoRows: [Result]
+    @Query private var internationalRows: [InternationalLotteryEntry]
+    @Binding var error: String?
+    private var keys: [String] {
+        let weekly = UserDefaults.standard.string(forKey: WeeklyLotteryDelivery.storageKey) ?? ""
+        let old = UserDefaults.standard.string(forKey: "transferredResultKeys") ?? ""
+        guard !weekly.isEmpty || !old.isEmpty else { return [] }
+        return WeeklyLotteryReport.rows(lotto: lottoRows, international: internationalRows).map(\.id)
+    }
+    var body: some View {
+        Color.clear.frame(width: 0, height: 0).accessibilityHidden(true)
+            .task(id: keys) {
+                guard !keys.isEmpty, !Task.isCancelled else { return }
+                do {
+                    try LotteryDeliverySync.migrateLegacy(
+                        rows: WeeklyLotteryReport.rows(lotto: lottoRows, international: internationalRows), context: context)
+                } catch {
+                    context.rollback()
+                    self.error = "Kunne ikke flytte registreringsmarkeringer: \(error.localizedDescription)"
+                }
+            }
     }
 }

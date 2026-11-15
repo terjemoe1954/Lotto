@@ -1,0 +1,12 @@
+Lotto 1.1 (12) – 14. november 2026
+
+Archive: SUCCEEDED
+Export: SUCCEEDED
+Apple validation: Validated Lotto / SUCCEEDED
+Upload: Uploaded Lotto / SUCCEEDED
+App Store Connect: ferdig behandlet; krypteringsopplysning lagret etter uttrykkelig godkjenning for build 12. Status Ready to Test. Gruppe Internal (1 tester) er tilknyttet. Norske What to Test-notater er lagret (Saved). Build-ID: 6cdf4f8e-287b-41a7-9224-1040edef1762.
+Distribusjon: intern TestFlight, samme Internal-gruppe som build 11.
+Ingen App Store-publisering.
+
+Ny funksjon: Start på nytt med egne spill, kontrollert full backup, separat iCloud-bekreftelse og sluttbekreftelse. Trekninger, tallstatistikk, favoritter og innstillinger beholdes. Brukermanualen er oppdatert.
+115 tester i 21 suiter bestod før arkivering. Release-arkiv og distribuert IPA er kontrollert for versjon/build, iPhone/iPad, signatur, iCloud Production og uendret container. Ingen SwiftData- eller CloudKit-modellendring.

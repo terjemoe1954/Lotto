@@ -122,6 +122,7 @@ struct NumberPredictionForm: View {
                     }
                 }
 
+                LotteryOddsSummary(game: .lotto, ordinaryRows: suggestedRows.count)
                 Section("Rapport") {
                     Text("\(predictedNumbers.count) av 34 tall er aktuelle.")
                         .font(.caption)
