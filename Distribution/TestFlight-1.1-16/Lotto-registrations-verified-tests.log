@@ -1,0 +1,394 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project Lotto.xcodeproj -scheme Lotto -configuration Debug -destination "platform=iOS Simulator,id=11D4D75C-A33C-49F1-AE17-EB2CBC53AA44" -derivedDataPath /private/tmp/Lotto-Registrations -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
+
+Build settings from command line:
+    CODE_SIGNING_ALLOWED = NO
+
+2026-11-16 05:24:06.207 xcodebuild[52905:7970759] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (2 targets)
+    Target 'LottoTests' in project 'Lotto'
+        ➜ Explicit dependency on target 'Lotto' in project 'Lotto'
+    Target 'Lotto' in project 'Lotto' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator27.2.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/terjemoe/Desktop/My Apps/Lotto/Lotto/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 63c7971af0b23e64678b33f303e7f105
+Build description path: /tmp/Lotto-Registrations/Build/Intermediates.noindex/XCBuildData/63c7971af0b23e64678b33f303e7f105.xcbuilddata
+ClangStatCache /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator27.2.sdk /tmp/Lotto-Registrations/SDKStatCaches.noindex/iphonesimulator27.2-24B8118-cc78df9d8a9de6526dea716b1c70fd8e.sdkstatcache
+    cd /Users/terjemoe/Desktop/My\ Apps/Lotto/Lotto.xcodeproj
+    /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator27.2.sdk -o /tmp/Lotto-Registrations/SDKStatCaches.noindex/iphonesimulator27.2-24B8118-cc78df9d8a9de6526dea716b1c70fd8e.sdkstatcache
+
+ProcessInfoPlistFile /tmp/Lotto-Registrations/Build/Products/Debug-iphonesimulator/Lotto.app/Info.plist /Users/terjemoe/Desktop/My\ Apps/Lotto/Lotto/Info.plist (in target 'Lotto' from project 'Lotto')
+    cd /Users/terjemoe/Desktop/My\ Apps/Lotto
+    builtin-infoPlistUtility /Users/terjemoe/Desktop/My\ Apps/Lotto/Lotto/Info.plist -producttype com.apple.product-type.application -genpkginfo /tmp/Lotto-Registrations/Build/Products/Debug-iphonesimulator/Lotto.app/PkgInfo -expandbuildsettings -format binary -platform iphonesimulator -additionalcontentfile /tmp/Lotto-Registrations/Build/Intermediates.noindex/Lotto.build/Debug-iphonesimulator/Lotto.build/assetcatalog_generated_info.plist -o /tmp/Lotto-Registrations/Build/Products/Debug-iphonesimulator/Lotto.app/Info.plist
+
+ProcessInfoPlistFile /tmp/Lotto-Registrations/Build/Products/Debug-iphonesimulator/Lotto.app/PlugIns/LottoTests.xctest/Info.plist /tmp/Lotto-Registrations/Build/Intermediates.noindex/Lotto.build/Debug-iphonesimulator/LottoTests.build/empty-LottoTests.plist (in target 'LottoTests' from project 'Lotto')
+    cd /Users/terjemoe/Desktop/My\ Apps/Lotto
+    builtin-infoPlistUtility /tmp/Lotto-Registrations/Build/Intermediates.noindex/Lotto.build/Debug-iphonesimulator/LottoTests.build/empty-LottoTests.plist -producttype com.apple.product-type.bundle.unit-test -expandbuildsettings -format binary -platform iphonesimulator -o /tmp/Lotto-Registrations/Build/Products/Debug-iphonesimulator/Lotto.app/PlugIns/LottoTests.xctest/Info.plist
+
+PruneExplicitPrecompiledModules /tmp/Lotto-Registrations/Build/Intermediates.noindex/SwiftExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /tmp/Lotto-Registrations/SDKExplicitPrecompiledModules
+
+PruneExplicitPrecompiledModules /tmp/Lotto-Registrations/Build/Intermediates.noindex/ExplicitPrecompiledModules
+
+/Users/terjemoe/Library/Developer/CoreSimulator/Devices/11D4D75C-A33C-49F1-AE17-EB2CBC53AA44/data/Containers/Data/Application/5E32D988-04E1-4BCE-B422-102DCBE65A7E/Library/Application Support/
+2026-11-16 05:24:18.751520+0100 Lotto[52925:7971176] [API] cannot add handler to 0 from 0 - dropping
+2026-11-16 05:24:18.907392+0100 Lotto[52925:7971176] [XPCErrors] non-launching port is incompatible with service identifier "com.apple.PointerUI.pointeruid.default-service"
+2026-11-16 05:24:19.103694+0100 Lotto[52925:7971176] [TrackingElementWindowController] The tracking window controller is unable to get the keyboard scene from <UIWindowScene: 0x1042dca00; role: UIWindowSceneSessionRoleApplication; persistentIdentifier: 1F8B7884-7E2D-4C8B-A440-5082480C03B1; activationState: UISceneActivationStateForegroundInactive> for conversions
+2026-11-16 05:24:21.204332+0100 Lotto[52925:7971176] [API] cannot add handler to 0 from 0 - dropping
+Test Suite 'All tests' started at 2026-11-16 05:24:21.212.
+Test Suite 'All tests' passed at 2026-11-16 05:24:21.218.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.006) seconds
+◇ Test run started.
+↳ Testing Library Version: 2403
+↳ Target Platform: arm64-apple-ios17.0-simulator
+◇ Suite AutomaticLotteryLedgerTests started.
+◇ Test deliveryConvergesAndUnmarkRemovesExpense() started.
+✔ Test deliveryConvergesAndUnmarkRemovesExpense() passed after 0.010 seconds.
+◇ Test priceAndDateIsolation() started.
+✔ Test priceAndDateIsolation() passed after 0.002 seconds.
+◇ Test invalidLegacyKeysCannotCreateExpenses() started.
+✔ Test invalidLegacyKeysCannotCreateExpenses() passed after 0.001 seconds.
+◇ Test allPrizeGroupsUseOnlyTheHighestApplicableTier() started.
+✔ Test allPrizeGroupsUseOnlyTheHighestApplicableTier() passed after 0.001 seconds.
+◇ Test lottoExtraNumberAndPendingJackpotAreHandled() started.
+✔ Test lottoExtraNumberAndPendingJackpotAreHandled() passed after 0.001 seconds.
+◇ Test apiFixturesDecodeOrdinaryAmountsWithoutNationalRaffles() started.
+✔ Test apiFixturesDecodeOrdinaryAmountsWithoutNationalRaffles() passed after 0.008 seconds.
+◇ Test unfinishedOrMissingAmountsNeverBecomeZeroWins() started.
+✔ Test unfinishedOrMissingAmountsNeverBecomeZeroWins() passed after 0.001 seconds.
+◇ Test automaticAmountsSurviveDeliveryBackupWithoutCreatingManualPosts() started.
+✔ Test automaticAmountsSurviveDeliveryBackupWithoutCreatingManualPosts() passed after 0.074 seconds.
+◇ Test cachePersistsAmountsAndKeepsThemOnNetworkFailure() started.
+✔ Test cachePersistsAmountsAndKeepsThemOnNetworkFailure() passed after 0.007 seconds.
+✔ Suite AutomaticLotteryLedgerTests passed after 0.110 seconds.
+◇ Suite InternationalLotteryTests started.
+◇ Test separatePoolsAllowSameNumber() started.
+✔ Test separatePoolsAllowSameNumber() passed after 0.001 seconds.
+◇ Test eurojackpotDrawDaysAndPools() started.
+✔ Test eurojackpotDrawDaysAndPools() passed after 0.001 seconds.
+◇ Test decodesActualAPIResponses() started.
+✔ Test decodesActualAPIResponses() passed after 0.001 seconds.
+◇ Test bundledArchiveIsCompleteAndValid() started.
+✔ Test bundledArchiveIsCompleteAndValid() passed after 0.021 seconds.
+◇ Test newGamesPersistAlongsideExistingLotto() started.
+✔ Test newGamesPersistAlongsideExistingLotto() passed after 0.122 seconds.
+◇ Test backupRoundTripIncludesNewGamesAndLegacyRemainsReadable() started.
+✔ Test backupRoundTripIncludesNewGamesAndLegacyRemainsReadable() passed after 0.001 seconds.
+✔ Suite InternationalLotteryTests passed after 0.147 seconds.
+◇ Suite LotteryMigrationTests started.
+◇ Test addingInternationalModelPreservesExistingStore() started.
+✔ Test addingInternationalModelPreservesExistingStore() passed after 1.807 seconds.
+✔ Suite LotteryMigrationTests passed after 1.808 seconds.
+◇ Suite InternationalStatisticsTests started.
+◇ Test poolsHaveIndependentFrequenciesAndIntervals() started.
+✔ Test poolsHaveIndependentFrequenciesAndIntervals() passed after 0.004 seconds.
+◇ Test eurojackpotUsesActualThreeAndFourDaySpacing() started.
+✔ Test eurojackpotUsesActualThreeAndFourDaySpacing() passed after 0.001 seconds.
+◇ Test duplicatesOwnRowsOtherGamesInvalidAndFutureDrawsAreIgnored() started.
+✔ Test duplicatesOwnRowsOtherGamesInvalidAndFutureDrawsAreIgnored() passed after 0.001 seconds.
+◇ Test emptyHistoryAndEmptyPeriodHaveNoInventedIntervals() started.
+✔ Test emptyHistoryAndEmptyPeriodHaveNoInventedIntervals() passed after 0.001 seconds.
+◇ Test periodsUseCalendarBoundariesAndLatestHundredDraws() started.
+✔ Test periodsUseCalendarBoundariesAndLatestHundredDraws() passed after 0.008 seconds.
+◇ Test longestGapOptionChangesOnlyAverages() started.
+✔ Test longestGapOptionChangesOnlyAverages() passed after 0.001 seconds.
+◇ Test daylightSavingUsesCalendarDaysAndSortingIsStable() started.
+✔ Test daylightSavingUsesCalendarDaysAndSortingIsStable() passed after 0.001 seconds.
+✔ Suite InternationalStatisticsTests passed after 0.017 seconds.
+◇ Suite InternationalArchiveStatisticsTests started.
+◇ Test archiveTotalsMatchNumberOfBallsAndDraws() started.
+✔ Test archiveTotalsMatchNumberOfBallsAndDraws() passed after 0.070 seconds.
+✔ Suite InternationalArchiveStatisticsTests passed after 0.070 seconds.
+◇ Suite InternationalSuggestionTests started.
+◇ Test allModesProduceTwentyUniqueValidRowsForBothGames() started.
+✔ Test allModesProduceTwentyUniqueValidRowsForBothGames() passed after 0.211 seconds.
+◇ Test sameDrawAndLaterResultsCannotInfluenceHistoricalSuggestions() started.
+✔ Test sameDrawAndLaterResultsCannotInfluenceHistoricalSuggestions() passed after 0.001 seconds.
+◇ Test sameWeekUsesPreviousISOWeekYearsOnly() started.
+✔ Test sameWeekUsesPreviousISOWeekYearsOnly() passed after 0.001 seconds.
+◇ Test intervalCandidatesKeepPoolsSeparate() started.
+✔ Test intervalCandidatesKeepPoolsSeparate() passed after 0.001 seconds.
+◇ Test randomModeIgnoresHistoryAndMissingHistoryFallsBackToEqualWeights() started.
+✔ Test randomModeIgnoresHistoryAndMissingHistoryFallsBackToEqualWeights() passed after 0.001 seconds.
+◇ Test inputsAreBoundedAndUnplayableDatesAdvance() started.
+✔ Test inputsAreBoundedAndUnplayableDatesAdvance() passed after 0.001 seconds.
+◇ Test bulkSavingIsIdempotentAndDateSpecific() started.
+✔ Test bulkSavingIsIdempotentAndDateSpecific() passed after 0.011 seconds.
+◇ Test invalidBatchLeavesDatabaseUnchanged() started.
+✔ Test invalidBatchLeavesDatabaseUnchanged() passed after 0.009 seconds.
+✔ Suite InternationalSuggestionTests passed after 0.239 seconds.
+◇ Suite LotteryDeliverySyncTests started.
+◇ Test arrivalOrderDuplicatesAndTiesConverge() started.
+✔ Test arrivalOrderDuplicatesAndTiesConverge() passed after 0.001 seconds.
+◇ Test legacyImportIsIdempotentAndCannotOverrideUndo() started.
+✔ Test legacyImportIsIdempotentAndCannotOverrideUndo() passed after 0.016 seconds.
+◇ Test setPreservesUndoAndIsMonotonicWithClockChanges() started.
+✔ Test setPreservesUndoAndIsMonotonicWithClockChanges() passed after 0.002 seconds.
+◇ Test restoreCreatesNewChangesAndClearsMarksMissingFromBackup() started.
+✔ Test restoreCreatesNewChangesAndClearsMarksMissingFromBackup() passed after 0.002 seconds.
+◇ Test newBackupRoundTripsChangesAndLegacyHasNoChangesField() started.
+✔ Test newBackupRoundTripsChangesAndLegacyHasNoChangesField() passed after 0.001 seconds.
+◇ Test addingChangeModelPreservesExistingRowsAndPersistsMarks() started.
+✔ Test addingChangeModelPreservesExistingRowsAndPersistsMarks() passed after 0.030 seconds.
+✔ Suite LotteryDeliverySyncTests passed after 0.053 seconds.
+◇ Suite LotteryDuplicateCleanupTests started.
+◇ Test keepsOneOriginalCopyAndPreservesDatesGamesAndExtraPools() started.
+✔ Test keepsOneOriginalCopyAndPreservesDatesGamesAndExtraPools() passed after 0.024 seconds.
+◇ Test backupContainsOriginalDuplicatesAndLedgerWhileRegnskapStaysUnchanged() started.
+✔ Test backupContainsOriginalDuplicatesAndLedgerWhileRegnskapStaysUnchanged() passed after 0.025 seconds.
+◇ Test failedBackupCannotDeleteAnything() started.
+✔ Test failedBackupCannotDeleteAnything() passed after 0.025 seconds.
+◇ Test refusesPendingUserEditsAndDoesNotSanitizeDifferentInvalidRows() started.
+✔ Test refusesPendingUserEditsAndDoesNotSanitizeDifferentInvalidRows() passed after 0.006 seconds.
+✔ Suite LotteryDuplicateCleanupTests passed after 0.083 seconds.
+◇ Suite LotteryFavoritesTests started.
+◇ Test gameSpecificRangesLimitsAndSeparatePoolsAreValidated() started.
+✔ Test gameSpecificRangesLimitsAndSeparatePoolsAreValidated() passed after 0.001 seconds.
+◇ Test lottoUsesOneFavoriteRowAndStillGeneratesUniqueRows() started.
+✔ Test lottoUsesOneFavoriteRowAndStillGeneratesUniqueRows() passed after 0.004 seconds.
+◇ Test internationalFavoritesOnlyLockTheFirstRow() started.
+✔ Test internationalFavoritesOnlyLockTheFirstRow() passed after 0.006 seconds.
+◇ Test limitedCombinationsAndFallbackNeverInventDuplicates() started.
+✔ Test limitedCombinationsAndFallbackNeverInventDuplicates() passed after 0.026 seconds.
+◇ Test disabledFavoritesUseTheSameRandomStreamAsNoFavorites() started.
+✔ Test disabledFavoritesUseTheSameRandomStreamAsNoFavorites() passed after 0.012 seconds.
+◇ Test clearAndDisablePersistAndResolveOldCloudCopies() started.
+✔ Test clearAndDisablePersistAndResolveOldCloudCopies() passed after 0.004 seconds.
+◇ Test fullBackupAndLegacyRestorePreserveFavoritesWhileDrawsOnlyExcludesThem() started.
+✔ Test fullBackupAndLegacyRestorePreserveFavoritesWhileDrawsOnlyExcludesThem() passed after 0.010 seconds.
+◇ Test addingFavoriteModelPreservesExistingDiskRowsAndDeliveryState() started.
+✔ Test addingFavoriteModelPreservesExistingDiskRowsAndDeliveryState() passed after 0.022 seconds.
+✔ Suite LotteryFavoritesTests passed after 0.089 seconds.
+◇ Suite LotteryHomeSnapshotTests started.
+◇ Test internationalLargeArchiveAndOwnRowsUseOnlySelectedDrawAndGame() started.
+International home: 200 draws / 2001 own rows: 0.031087958 seconds
+✔ Test internationalLargeArchiveAndOwnRowsUseOnlySelectedDrawAndGame() passed after 0.075 seconds.
+◇ Test lottoSnapshotPreservesDateFilteringMatchingAndMissingDraws() started.
+Lotto home: 2001 own rows: 0.060346541 seconds
+✔ Test lottoSnapshotPreservesDateFilteringMatchingAndMissingDraws() passed after 0.098 seconds.
+◇ Test emptyArchiveAndDifferentYearCannotMatchByWeekNumber() started.
+✔ Test emptyArchiveAndDifferentYearCannotMatchByWeekNumber() passed after 0.001 seconds.
+◇ Test cancelledUpdatesDoNotFetchOrMutateData() started.
+✔ Test cancelledUpdatesDoNotFetchOrMutateData() passed after 0.002 seconds.
+✔ Suite LotteryHomeSnapshotTests passed after 0.176 seconds.
+◇ Suite LotteryLedgerTests started.
+◇ Test parsesNorwegianAmountsWithoutRoundingOrNegativeExpenses() started.
+✔ Test parsesNorwegianAmountsWithoutRoundingOrNegativeExpenses() passed after 0.001 seconds.
+◇ Test ledgerRoundTripsBackupAndLegacyBackupsPreserveIt() started.
+✔ Test ledgerRoundTripsBackupAndLegacyBackupsPreserveIt() passed after 0.012 seconds.
+◇ Test ordinaryPrizeThresholdsHandleSeparatePools() started.
+✔ Test ordinaryPrizeThresholdsHandleSeparatePools() passed after 0.001 seconds.
+✔ Suite LotteryLedgerTests passed after 0.012 seconds.
+◇ Suite LotteryOddsTests started.
+◇ Test firstPrizeMatchesOfficialGameSpaces() started.
+✔ Test firstPrizeMatchesOfficialGameSpaces() passed after 0.001 seconds.
+◇ Test fullSystemsDoNotTreatConstituentRowsAsIndependent() started.
+✔ Test fullSystemsDoNotTreatConstituentRowsAsIndependent() passed after 0.001 seconds.
+◇ Test ordinaryPrizeProbabilityAndBounds() started.
+✔ Test ordinaryPrizeProbabilityAndBounds() passed after 0.007 seconds.
+✔ Suite LotteryOddsTests passed after 0.008 seconds.
+◇ Suite LotteryOwnGamesResetTests started.
+◇ Test backupRestoresResetRowsAndLedgerWhileDrawsSurvive() started.
+✔ Test backupRestoresResetRowsAndLedgerWhileDrawsSurvive() passed after 0.048 seconds.
+◇ Test rejectsChangedStateMissingBackupAndPendingEdits() started.
+✔ Test rejectsChangedStateMissingBackupAndPendingEdits() passed after 0.024 seconds.
+◇ Test failedBackupNeverChangesStore() started.
+✔ Test failedBackupNeverChangesStore() passed after 0.004 seconds.
+✔ Suite LotteryOwnGamesResetTests passed after 0.077 seconds.
+◇ Suite LotteryOwnRowStoreTests started.
+◇ Test blocksRepeatedSaveIncludingPendingAndReorderedNumbersButAllowsOtherDraws() started.
+✔ Test blocksRepeatedSaveIncludingPendingAndReorderedNumbersButAllowsOtherDraws() passed after 0.008 seconds.
+◇ Test distinguishesInternationalExtraNumbersGamesAndDraws() started.
+✔ Test distinguishesInternationalExtraNumbersGamesAndDraws() passed after 0.004 seconds.
+◇ Test oldBackupRestoresOneOriginalPerOwnRowAndKeepsDeliveryAndDraws() started.
+✔ Test oldBackupRestoresOneOriginalPerOwnRowAndKeepsDeliveryAndDraws() passed after 0.012 seconds.
+✔ Suite LotteryOwnRowStoreTests passed after 0.025 seconds.
+◇ Suite LotteryRegistrationsTests started.
+◇ Test bulkMarksOnlyRequestedRowsAndIsIdempotent() started.
+LOTTO_BULK_792_SECONDS 0.04106593132019043
+✔ Test bulkMarksOnlyRequestedRowsAndIsIdempotent() passed after 0.086 seconds.
+◇ Test correctedDeliveredRowMovesMarkWithoutDoubleExpenseAndProtectsDraws() started.
+✔ Test correctedDeliveredRowMovesMarkWithoutDoubleExpenseAndProtectsDraws() passed after 0.013 seconds.
+◇ Test invalidOrDuplicateCorrectionKeepsOriginalData() started.
+✔ Test invalidOrDuplicateCorrectionKeepsOriginalData() passed after 0.003 seconds.
+◇ Test deletingSavedRowCanKeepOrRemoveDeliveredHistory() started.
+✔ Test deletingSavedRowCanKeepOrRemoveDeliveredHistory() passed after 0.003 seconds.
+◇ Test deletingSystemKeepsSharedRowsAndTheirDelivery() started.
+✔ Test deletingSystemKeepsSharedRowsAndTheirDelivery() passed after 0.011 seconds.
+◇ Test replaceSystemPreservesManualPostsAndDoesNotInventDeliveries() started.
+✔ Test replaceSystemPreservesManualPostsAndDoesNotInventDeliveries() passed after 0.008 seconds.
+◇ Test correctingOneSystemComponentDetachesOnlyThatComponent() started.
+✔ Test correctingOneSystemComponentDetachesOnlyThatComponent() passed after 0.006 seconds.
+✔ Suite LotteryRegistrationsTests passed after 0.134 seconds.
+◇ Suite LotterySpendingTests started.
+◇ Test historyUsesOsloMonthsAndDoesNotCountFutureOrPrizes() started.
+✔ Test historyUsesOsloMonthsAndDoesNotCountFutureOrPrizes() passed after 0.001 seconds.
+◇ Test reducedScenarioIsArithmeticAndDoesNotMutateHistory() started.
+✔ Test reducedScenarioIsArithmeticAndDoesNotMutateHistory() passed after 0.001 seconds.
+◇ Test correctionImmediatelyChangesTotals() started.
+✔ Test correctionImmediatelyChangesTotals() passed after 0.001 seconds.
+✔ Suite LotterySpendingTests passed after 0.001 seconds.
+◇ Suite LotterySystemMembershipTests started.
+◇ Test equalScoresDoNotLockLowNumbersIntoEveryRow() started.
+✔ Test equalScoresDoNotLockLowNumbersIntoEveryRow() passed after 0.011 seconds.
+◇ Test historicalFrequencyStillWeightsHighNumbersAndIgnoresFutureDraws() started.
+✔ Test historicalFrequencyStillWeightsHighNumbersAndIgnoresFutureDraws() passed after 0.023 seconds.
+◇ Test overlappingSystemsRetainBothSelectionsWithoutDuplicateStakesAndBackupRestoresThem() started.
+✔ Test overlappingSystemsRetainBothSelectionsWithoutDuplicateStakesAndBackupRestoresThem() passed after 0.052 seconds.
+◇ Test internationalSystemMetadataAndLegacyBackupsRoundTrip() started.
+✔ Test internationalSystemMetadataAndLegacyBackupsRoundTrip() passed after 0.018 seconds.
+◇ Test duplicateCleanupUnionsSystemLabelsAndPDFIncludesFullSystemOverview() started.
+System QA directory: /Users/terjemoe/Library/Developer/CoreSimulator/Devices/11D4D75C-A33C-49F1-AE17-EB2CBC53AA44/data/Containers/Data/Application/5E32D988-04E1-4BCE-B422-102DCBE65A7E/tmp/Lotto-System-QA
+✔ Test duplicateCleanupUnionsSystemLabelsAndPDFIncludesFullSystemOverview() passed after 0.182 seconds.
+✔ Suite LotterySystemMembershipTests passed after 0.288 seconds.
+◇ Suite LotterySystemTests started.
+◇ Test officialSystemSizesAndLimits() started.
+✔ Test officialSystemSizesAndLimits() passed after 0.001 seconds.
+◇ Test officialLottoNineNumberPrizeDistribution() started.
+✔ Test officialLottoNineNumberPrizeDistribution() passed after 0.001 seconds.
+◇ Test officialEuroSystemPrizesAndDrawIsolation() started.
+✔ Test officialEuroSystemPrizesAndDrawIsolation() passed after 0.001 seconds.
+◇ Test savesAdditivelyAndAvoidsDuplicates() started.
+✔ Test savesAdditivelyAndAvoidsDuplicates() passed after 0.009 seconds.
+✔ Suite LotterySystemTests passed after 0.011 seconds.
+◇ Suite LottoTests started.
+◇ Test formattedDateUsesExpectedNorwegianStyle() started.
+✔ Test formattedDateUsesExpectedNorwegianStyle() passed after 0.001 seconds.
+◇ Test normalizeRemovesTimeComponents() started.
+✔ Test normalizeRemovesTimeComponents() passed after 0.001 seconds.
+◇ Test saturdayDetectionMatchesExpectedWeekday() started.
+✔ Test saturdayDetectionMatchesExpectedWeekday() passed after 0.001 seconds.
+◇ Test statisticsCountOnlyValidNumbers() started.
+✔ Test statisticsCountOnlyValidNumbers() passed after 0.001 seconds.
+◇ Test statisticsReturnAverageGapAndLastDate() started.
+✔ Test statisticsReturnAverageGapAndLastDate() passed after 0.001 seconds.
+◇ Test nextDatesAdvancePastReferenceDateWhenRequested() started.
+✔ Test nextDatesAdvancePastReferenceDateWhenRequested() passed after 0.001 seconds.
+◇ Test rowValidationRejectsDuplicateNumbers() started.
+✔ Test rowValidationRejectsDuplicateNumbers() passed after 0.001 seconds.
+◇ Test rowValidationRejectsNumbersOutsideValidRange() started.
+✔ Test rowValidationRejectsNumbersOutsideValidRange() passed after 0.001 seconds.
+◇ Test duplicateResultValidationRejectsSameNumbersOnSameDate() started.
+✔ Test duplicateResultValidationRejectsSameNumbersOnSameDate() passed after 0.001 seconds.
+◇ Test duplicateResultValidationAllowsSameNumbersOnDifferentDate() started.
+✔ Test duplicateResultValidationAllowsSameNumbersOnDifferentDate() passed after 0.001 seconds.
+◇ Test jackpotValidationRejectsExistingDrawDate() started.
+✔ Test jackpotValidationRejectsExistingDrawDate() passed after 0.001 seconds.
+◇ Test sanitizeNumberInputKeepsOnlyDigitsAndCapsAt34() started.
+✔ Test sanitizeNumberInputKeepsOnlyDigitsAndCapsAt34() passed after 0.001 seconds.
+◇ Test jackpotImportAddsOnlyDatesThatDoNotExist() started.
+✔ Test jackpotImportAddsOnlyDatesThatDoNotExist() passed after 0.001 seconds.
+◇ Test jackpotImportReportsDifferentNumbersOnExistingDate() started.
+✔ Test jackpotImportReportsDifferentNumbersOnExistingDate() passed after 0.001 seconds.
+◇ Test drawsOnlyBackupContainsNoPersonalRowsAndKeepsItsType() started.
+✔ Test drawsOnlyBackupContainsNoPersonalRowsAndKeepsItsType() passed after 0.001 seconds.
+◇ Test duplicateJackpotsKeepOnlyBestEntryPerDate() started.
+✔ Test duplicateJackpotsKeepOnlyBestEntryPerDate() passed after 0.001 seconds.
+◇ Test remoteDrawDecoderSortsAndValidatesNumbers() started.
+✔ Test remoteDrawDecoderSortsAndValidatesNumbers() passed after 0.001 seconds.
+◇ Test remoteDrawDecoderRejectsDuplicateNumbers() started.
+✔ Test remoteDrawDecoderRejectsDuplicateNumbers() passed after 0.003 seconds.
+◇ Test deliveryClipboardUsesOneFormattedRowPerLine() started.
+✔ Test deliveryClipboardUsesOneFormattedRowPerLine() passed after 0.001 seconds.
+◇ Test printLayoutKeepsAllRowsAcrossPages() started.
+✔ Test printLayoutKeepsAllRowsAcrossPages() passed after 0.001 seconds.
+◇ Test winnerComparisonReturnsMatchedNumbersAndExtraNumber() started.
+✔ Test winnerComparisonReturnsMatchedNumbersAndExtraNumber() passed after 0.001 seconds.
+◇ Test suggestionEngineReturns20UniqueRows() started.
+✔ Test suggestionEngineReturns20UniqueRows() passed after 0.001 seconds.
+◇ Test suggestionEngineIncludesPredictedAndSameWeekMetadata() started.
+✔ Test suggestionEngineIncludesPredictedAndSameWeekMetadata() passed after 0.001 seconds.
+◇ Test suggestionEngineSupportsCustomRowCountAndModes() started.
+✔ Test suggestionEngineSupportsCustomRowCountAndModes() passed after 0.001 seconds.
+◇ Test suggestionEnginePrioritizesSameWeekAndPredictedNumbers() started.
+✔ Test suggestionEnginePrioritizesSameWeekAndPredictedNumbers() passed after 0.001 seconds.
+✔ Suite LottoTests passed after 0.011 seconds.
+◇ Suite OfflineBackupIntegrationTests started.
+◇ Test offlineDiskStoreSurvivesCloseAndReopenForAllGames() started.
+✔ Test offlineDiskStoreSurvivesCloseAndReopenForAllGames() passed after 0.015 seconds.
+◇ Test fullBackupFileRestoresAllGamesAndPositiveAndRemovedMarksIntoAnotherDiskStore() started.
+✔ Test fullBackupFileRestoresAllGamesAndPositiveAndRemovedMarksIntoAnotherDiskStore() passed after 0.014 seconds.
+◇ Test unreadableDateRejectsRestoreBeforeReplacingExistingData() started.
+✔ Test unreadableDateRejectsRestoreBeforeReplacingExistingData() passed after 0.005 seconds.
+◇ Test invalidInternationalDrawDoesNotPartiallyImportNationalDraws() started.
+✔ Test invalidInternationalDrawDoesNotPartiallyImportNationalDraws() passed after 0.006 seconds.
+◇ Test drawsOnlyImportPreservesOwnRowsAndStatusAndIsIdempotent() started.
+✔ Test drawsOnlyImportPreservesOwnRowsAndStatusAndIsIdempotent() passed after 0.008 seconds.
+◇ Test legacyFullBackupPreservesNewGamesAndUnspecifiedDeliveryStatus() started.
+✔ Test legacyFullBackupPreservesNewGamesAndUnspecifiedDeliveryStatus() passed after 0.006 seconds.
+◇ Test separateOfflineContextsMergeChangesWithoutLosingOtherRows() started.
+✔ Test separateOfflineContextsMergeChangesWithoutLosingOtherRows() passed after 0.004 seconds.
+◇ Test truncatedFileFailsToDecodeAndLeavesExistingRowsUntouched() started.
+✔ Test truncatedFileFailsToDecodeAndLeavesExistingRowsUntouched() passed after 0.023 seconds.
+✔ Suite OfflineBackupIntegrationTests passed after 0.087 seconds.
+◇ Suite BackupCheckTests started.
+◇ Test checkUsesAnIndependentStoreAndKeepsPositiveAndNegativeMarks() started.
+✔ Test checkUsesAnIndependentStoreAndKeepsPositiveAndNegativeMarks() passed after 0.007 seconds.
+◇ Test drawsOnlyCheckAndCorruptBackupCheckCannotModifyLiveStore() started.
+✔ Test drawsOnlyCheckAndCorruptBackupCheckCannotModifyLiveStore() passed after 0.002 seconds.
+✔ Suite BackupCheckTests passed after 0.010 seconds.
+◇ Suite FullArchiveBackupTests started.
+◇ Test completeBundledHistoryPassesBackupTrialRestore() started.
+✔ Test completeBundledHistoryPassesBackupTrialRestore() passed after 0.384 seconds.
+✔ Suite FullArchiveBackupTests passed after 0.384 seconds.
+◇ Suite LegacyOwnRowBackupTests started.
+◇ Test legacyTypingMistakeIsRestoredExactlyAndReportedInsteadOfBlockingBackup() started.
+✔ Test legacyTypingMistakeIsRestoredExactlyAndReportedInsteadOfBlockingBackup() passed after 0.020 seconds.
+◇ Test historicalNonDrawDateIsPreservedAndWarnedAbout() started.
+✔ Test historicalNonDrawDateIsPreservedAndWarnedAbout() passed after 0.003 seconds.
+✔ Suite LegacyOwnRowBackupTests passed after 0.024 seconds.
+◇ Suite WeeklyLotteryReportTests started.
+◇ Test isoWeekIncludesCorrectYearAcrossNewYear() started.
+✔ Test isoWeekIncludesCorrectYearAcrossNewYear() passed after 0.001 seconds.
+◇ Test filteringRespectsYearGameAndExplicitSelection() started.
+✔ Test filteringRespectsYearGameAndExplicitSelection() passed after 0.001 seconds.
+◇ Test bothEurojackpotDrawDaysInWeekAreIncluded() started.
+✔ Test bothEurojackpotDrawDaysInWeekAreIncluded() passed after 0.001 seconds.
+◇ Test adaptersExcludeWinningDrawsAndPreserveLegacyMarkKey() started.
+✔ Test adaptersExcludeWinningDrawsAndPreserveLegacyMarkKey() passed after 0.001 seconds.
+◇ Test stableKeysDeduplicateRowsAndKeepDatesAndPoolsSeparate() started.
+✔ Test stableKeysDeduplicateRowsAndKeepDatesAndPoolsSeparate() passed after 0.001 seconds.
+◇ Test marksRoundTripAndCanBeUndoneWithoutChangingRowIdentity() started.
+✔ Test marksRoundTripAndCanBeUndoneWithoutChangingRowIdentity() passed after 0.001 seconds.
+◇ Test backupIncludesMarksWhileLegacyBackupLeavesThemUnspecified() started.
+✔ Test backupIncludesMarksWhileLegacyBackupLeavesThemUnspecified() passed after 0.001 seconds.
+◇ Test pageBreaksRetainAllRowsAndWorkbookAndPDFAreReadable() started.
+✔ Test pageBreaksRetainAllRowsAndWorkbookAndPDFAreReadable() passed after 0.067 seconds.
+✔ Suite WeeklyLotteryReportTests passed after 0.069 seconds.
+✔ Test run with 131 tests in 24 suites passed after 3.946 seconds.
+2026-11-16 05:24:25.622 xcodebuild[52905:7970759] [MT] IDETestOperationsObserverDebug: 18.062 elapsed -- Testing started completed.
+2026-11-16 05:24:25.622 xcodebuild[52905:7970759] [MT] IDETestOperationsObserverDebug: 0.000 sec, +0.000 sec -- start
+2026-11-16 05:24:25.622 xcodebuild[52905:7970759] [MT] IDETestOperationsObserverDebug: 18.062 sec, +18.062 sec -- end
+
+Test session results, code coverage, and logs:
+	/tmp/Lotto-Registrations/Logs/Test/Test-Lotto-2026.11.16_05-24-06-+0100.xcresult
+
+** TEST SUCCEEDED **
+
+Testing started

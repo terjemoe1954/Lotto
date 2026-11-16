@@ -14,6 +14,7 @@ struct LotteryHomeView: View {
     @State private var showFavorites = false
     @State private var favoriteIntro = false
     @State private var showWeeklyReport = false
+    @State private var showRegistrations = false
     @State private var showLedger = false
     @State private var showWinnings = false
     @State private var showSystem = false
@@ -41,8 +42,10 @@ struct LotteryHomeView: View {
                 Button("Mine gevinster", systemImage: "list.bullet") { showWinnings = true }
                 Button("Systemspill", systemImage: "square.grid.3x3") { showSystem = true }
             }.buttonStyle(.bordered)
-            Button("Spilleoversikt", systemImage: "list.bullet.rectangle") { showLedger = true }
-                .buttonStyle(.bordered).padding(.bottom, 4)
+            HStack {
+                Button("Spilleoversikt", systemImage: "list.bullet.rectangle") { showLedger = true }
+                Button("Mine registreringer", systemImage: "square.and.pencil") { showRegistrations = true }
+            }.buttonStyle(.bordered).padding(.bottom, 4)
             Group {
                 if let game = InternationalGame(rawValue: displayedSelection) {
                     InternationalLotteryView(game: game).id(game)
@@ -100,6 +103,7 @@ struct LotteryHomeView: View {
         }
         .sheet(isPresented: $showWinnings) { LotteryWinningsView() }
         .sheet(isPresented: $showSystem) { LotterySystemView(initialGame: LotteryReportGame(rawValue: selection) ?? .lotto) }
+        .sheet(isPresented: $showRegistrations) { LotteryRegistrationsView() }
         .sheet(isPresented: $showLedger) { LotteryLedgerView() }
         .sheet(isPresented: $showWeeklyReport) { WeeklyLotteryReportView() }
         .background { LotteryLegacyMigrationView(error: $migrationError) }

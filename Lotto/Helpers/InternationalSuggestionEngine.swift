@@ -23,6 +23,7 @@ enum InternationalSuggestionMode: String, CaseIterable, Identifiable {
 struct InternationalSuggestedRow: Identifiable, Equatable {
     let mainNumbers: [Int]
     let extraNumbers: [Int]
+    var isFavorite: Bool = false
     var id: String { "\(mainNumbers)|\(extraNumbers)" }
     var text: String {
         mainNumbers.map(String.init).joined(separator: " – ") + "  +  " + extraNumbers.map(String.init).joined(separator: " – ")
@@ -77,10 +78,11 @@ enum InternationalSuggestionEngine {
         let extraWeights = weights(extra.rows, sameWeek: extraWeek.rows, candidates: Set(extraCandidates), mode: mode)
         let reportGame = LotteryReportGame(rawValue: game.rawValue)!
         let locked = favorites.effective(for: reportGame)
-        let wanted = min(20, max(0, count))
+        let includesFavorite = count > 0 && (!locked.mainNumbers.isEmpty || !locked.extraNumbers.isEmpty)
+        let wanted = min(20, max(0, count)) + (includesFavorite ? 1 : 0)
         var seen = Set<String>()
         var rows: [InternationalSuggestedRow] = []
-        if wanted > 0 && (!locked.mainNumbers.isEmpty || !locked.extraNumbers.isEmpty) {
+        if includesFavorite {
             // Complete one favorite row with historical weights, even in random mode.
             func complete(_ selected: [Int], _ weights: [(number: Int, weight: Double)], _ count: Int) -> [Int] {
                 let ranked = weights.sorted { $0.weight == $1.weight ? $0.number < $1.number : $0.weight > $1.weight }
@@ -88,7 +90,7 @@ enum InternationalSuggestionEngine {
             }
             let favoriteRow = InternationalSuggestedRow(
                 mainNumbers: complete(locked.mainNumbers, weights(main.rows, sameWeek: mainWeek.rows, candidates: Set(mainCandidates), mode: .history), game.mainCount),
-                extraNumbers: complete(locked.extraNumbers, weights(extra.rows, sameWeek: extraWeek.rows, candidates: Set(extraCandidates), mode: .history), game.extraCount))
+                extraNumbers: complete(locked.extraNumbers, weights(extra.rows, sameWeek: extraWeek.rows, candidates: Set(extraCandidates), mode: .history), game.extraCount), isFavorite: true)
             rows.append(favoriteRow); seen.insert(favoriteRow.id)
         }
         for _ in 0..<(wanted * 50) {

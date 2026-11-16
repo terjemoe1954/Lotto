@@ -49,123 +49,54 @@ struct SuggestedRow: Identifiable, Hashable {
 }
 
 enum LottoSuggestionEngine {
-    static func makeSuggestedRows(
-        for date: Date,
-        predictedNumbers: [Int],
-        jackpots: [JackPot],
-        mode: SuggestionMode = .balansert,
-        rowCount: Int = 20,
-        favoriteNumbers: [Int] = []
-    ) -> [SuggestedRow] {
+    static func makeSuggestedRows(for date: Date, predictedNumbers: [Int], jackpots: [JackPot],
+                                  mode: SuggestionMode = .balansert, rowCount: Int = 20,
+                                  favoriteNumbers: [Int] = []) -> [SuggestedRow] {
+        var generator = SystemRandomNumberGenerator()
+        return makeSuggestedRows(for: date, predictedNumbers: predictedNumbers, jackpots: jackpots,
+                                 mode: mode, rowCount: rowCount, favoriteNumbers: favoriteNumbers, using: &generator)
+    }
+    static func makeSuggestedRows<R: RandomNumberGenerator>(for date: Date, predictedNumbers: [Int], jackpots: [JackPot],
+                                  mode: SuggestionMode = .balansert, rowCount: Int = 20,
+                                  favoriteNumbers: [Int] = [], using generator: inout R) -> [SuggestedRow] {
         guard rowCount > 0 else { return [] }
-
-        let weekNumber = LottoDateSupport.weekNumber(for: date)
-        let sameWeekJackpots = jackpots
-            .filter { $0.weekNr == weekNumber }
-            .sorted { $0.dato > $1.dato }
-
-        let overallFrequency = LottoStatistics.frequency(for: jackpots)
-        let sameWeekFrequency = LottoStatistics.frequency(for: sameWeekJackpots)
-        let predictedSet = Set(predictedNumbers.filter(LottoStatistics.validNumberRange.contains))
-        let sameWeekRows = sameWeekJackpots.map { normalizedRow(from: $0) }.filter { $0.count == 7 }
-        let sameWeekSet = Set(sameWeekRows.flatMap { $0 })
-        let maxOverallFrequency = overallFrequency.values.max() ?? 0
-
-        var weightedNumbers = (1...34).map { number in
-            (
-                number: number,
-                score: score(
-                    for: number,
-                    mode: mode,
-                    predictedSet: predictedSet,
-                    sameWeekFrequency: sameWeekFrequency,
-                    overallFrequency: overallFrequency,
-                    maxOverallFrequency: maxOverallFrequency
-                )
-            )
+        // Looking at a past date must not use that draw or any later results.
+        let history = jackpots.filter { LottoDateSupport.normalize($0.dato) < LottoDateSupport.normalize(date) }
+        let sameWeek = history.filter { $0.weekNr == LottoDateSupport.weekNumber(for: date) }
+        let overall = LottoStatistics.frequency(for: history), weekly = LottoStatistics.frequency(for: sameWeek)
+        let predicted = Set(predictedNumbers.filter(LottoStatistics.validNumberRange.contains))
+        let weekSet = Set(sameWeek.flatMap { normalizedRow(from: $0) })
+        let maximum = overall.values.max() ?? 0
+        let scored = (1...34).map { n in
+            (number: n, score: score(for: n, mode: mode, predictedSet: predicted,
+                sameWeekFrequency: weekly, overallFrequency: overall, maxOverallFrequency: maximum))
         }
-        .sorted { lhs, rhs in
-            if lhs.score == rhs.score {
-                return lhs.number < rhs.number
-            }
-            return lhs.score > rhs.score
+        let highest = scored.map(\.score).max() ?? 0
+        let strength = mode == .trygg ? 8.0 : (mode == .balansert ? 4.0 : 1.5)
+        let weights = scored.map { (number: $0.number, weight: 1 + (highest > 0 ? Double($0.score) / Double(highest) * strength : 0)) }
+        // Randomize equal scores, rather than always locking the lowest numbers.
+        let ranked = scored.shuffled(using: &generator).sorted { $0.score > $1.score }.map(\.number)
+        let favorites = LotteryFavoriteSelection(mainNumbers: favoriteNumbers).effective(for: .lotto).mainNumbers
+        let wanted = min(rowCount, 500) + (favorites.isEmpty ? 0 : 1)
+        var rows: [SuggestedRow] = [], seen = Set<[Int]>()
+        func append(_ values: [Int], label: String) {
+            let n = values.sorted()
+            guard seen.insert(n).inserted else { return }
+            rows.append(suggestedRow(from: n, predictedSet: predicted, sameWeekSet: weekSet, sourceLabel: label))
         }
-        .map(\.number)
-
-        if weightedNumbers.isEmpty {
-            weightedNumbers = Array(1...34)
+        if !favorites.isEmpty {
+            append(favorites + ranked.filter { !favorites.contains($0) }.prefix(7 - favorites.count), label: "Favorittrekke")
         }
-
-        let locked = LotteryFavoriteSelection(mainNumbers: favoriteNumbers).effective(for: .lotto)
-        let target = min(rowCount, 500)
-        var rows: [SuggestedRow] = []
-        var seen: Set<[Int]> = []
-        if !locked.mainNumbers.isEmpty {
-            let fill = weightedNumbers.filter { !locked.mainNumbers.contains($0) }
-            let numbers = (locked.mainNumbers + fill.prefix(7 - locked.mainNumbers.count)).sorted()
-            rows.append(suggestedRow(from: numbers, predictedSet: predictedSet, sameWeekSet: sameWeekSet,
-                                     sourceLabel: "Favorittrekke"))
-            seen.insert(numbers)
+        if highest > 0 && rows.count < wanted {
+            append(Array(ranked.prefix(7)), label: "Historisk vekting")
         }
-
-        for historicalRow in sameWeekRows {
-            guard rows.count < target else { break }
-
-            let mergedRow = buildRow(
-                startingWith: historicalRow,
-                weightedNumbers: weightedNumbers,
-                predictedSet: predictedSet,
-                mode: mode,
-                offset: rows.count
-            )
-
-            if seen.insert(mergedRow).inserted {
-                rows.append(
-                    suggestedRow(
-                        from: mergedRow,
-                        predictedSet: predictedSet,
-                        sameWeekSet: sameWeekSet,
-                        sourceLabel: "Historisk uke"
-                    )
-                )
-            }
-        }
-
-        var offset = 0
-        while rows.count < target && offset < 500 {
-            let baseNumbers = predictedSet.isEmpty
-                ? Array(weightedNumbers.prefix(7))
-                : Array(predictedSet.sorted().prefix(7))
-
-            let row = buildRow(
-                startingWith: baseNumbers,
-                weightedNumbers: weightedNumbers,
-                predictedSet: predictedSet,
-                mode: mode,
-                offset: offset
-            )
-
-            if seen.insert(row).inserted {
-                rows.append(
-                    suggestedRow(
-                        from: row,
-                        predictedSet: predictedSet,
-                        sameWeekSet: sameWeekSet,
-                        sourceLabel: predictedSet.isEmpty ? "Historisk miks" : "Intervallmiks"
-                    )
-                )
-            }
-
-            offset += 1
-        }
-
-        if rows.count < target {
-            for values in LotteryFavoriteSelection().completions(for: .lotto, limit: target) {
-                if seen.insert(values.main).inserted {
-                    rows.append(suggestedRow(from: values.main, predictedSet: predictedSet, sameWeekSet: sameWeekSet, sourceLabel: "Variasjon"))
-                }
-                if rows.count == target { break }
-            }
+        for attempt in 0..<(wanted * 200) {
+            guard rows.count < wanted else { break }
+            let values = LotteryWeightedSampling.sample(weights, count: 7, using: &generator)
+            // Avoid batches full of rows differing by only one number. Relax only
+            // for very large batches; uniqueness is always required.
+            if attempt < wanted * 100 && rows.contains(where: { Set($0.numbers).intersection(values).count >= 6 }) { continue }
+            append(values, label: mode == .sjansen ? "Variert utvalg" : "Vektet historikkmiks")
         }
         return rows
     }
@@ -199,146 +130,6 @@ enum LottoSuggestionEngine {
             let rarityBonus = max(0, maxOverallFrequency - overallScore)
             return predictionScore + (sameWeekScore * 70) + rarityBonus
         }
-    }
-
-    private static func buildRow(
-        startingWith seedNumbers: [Int],
-        weightedNumbers: [Int],
-        predictedSet: Set<Int>,
-        mode: SuggestionMode,
-        offset: Int
-    ) -> [Int] {
-        var row = seedNumbers.filter(LottoStatistics.validNumberRange.contains)
-        var used = Set(row)
-        let protectedCount: Int
-        switch mode {
-        case .trygg:
-            protectedCount = 4
-        case .balansert:
-            protectedCount = 3
-        case .sjansen:
-            protectedCount = 2
-        }
-        let protectedNumbers = Set(row.prefix(protectedCount))
-        let step = max(1, (offset % 5) + 1)
-        let rotated = rotatedNumbers(from: weightedNumbers, by: offset)
-        var index = 0
-
-        while row.count < 7 && index < rotated.count * 3 {
-            let number = rotated[index % rotated.count]
-            if index.isMultiple(of: step) && used.insert(number).inserted {
-                row.append(number)
-            }
-            index += 1
-        }
-
-        if row.count < 7 {
-            for number in 1...34 where row.count < 7 {
-                if used.insert(number).inserted {
-                    row.append(number)
-                }
-            }
-        }
-
-        var finalized = balanceRow(row, predictedSet: predictedSet)
-        finalized = diversifyRow(
-            finalized,
-            weightedNumbers: weightedNumbers,
-            mode: mode,
-            offset: offset,
-            protectedNumbers: protectedNumbers
-        )
-        return Array(finalized.prefix(7)).sorted()
-    }
-
-    private static func rotatedNumbers(from numbers: [Int], by offset: Int) -> [Int] {
-        guard !numbers.isEmpty else { return [] }
-        let safeOffset = offset % numbers.count
-        return Array(numbers[safeOffset...]) + Array(numbers[..<safeOffset])
-    }
-
-    private static func balanceRow(_ row: [Int], predictedSet: Set<Int>) -> [Int] {
-        let sorted = row.sorted()
-        guard sorted.count >= 7 else { return sorted }
-
-        let low = sorted.filter { $0 <= 11 }
-        let mid = sorted.filter { (12...22).contains($0) }
-        let high = sorted.filter { $0 >= 23 }
-
-        if !low.isEmpty, !mid.isEmpty, !high.isEmpty {
-            return sorted
-        }
-
-        var adjusted = sorted
-        let fallbackOrder = predictedSet.sorted() + Array(1...34)
-        for number in fallbackOrder {
-            guard LottoStatistics.validNumberRange.contains(number), !adjusted.contains(number) else { continue }
-            adjusted.append(number)
-
-            let recalcLow = adjusted.filter { $0 <= 11 }
-            let recalcMid = adjusted.filter { (12...22).contains($0) }
-            let recalcHigh = adjusted.filter { $0 >= 23 }
-
-            if !recalcLow.isEmpty, !recalcMid.isEmpty, !recalcHigh.isEmpty {
-                return adjusted.sorted()
-            }
-        }
-
-        return adjusted.sorted()
-    }
-
-    private static func diversifyRow(
-        _ row: [Int],
-        weightedNumbers: [Int],
-        mode: SuggestionMode,
-        offset: Int,
-        protectedNumbers: Set<Int>
-    ) -> [Int] {
-        guard row.count >= 7, !weightedNumbers.isEmpty else { return row.sorted() }
-
-        var adjusted = row.sorted()
-        let replacementBase: Int
-        switch mode {
-        case .trygg:
-            replacementBase = 1
-        case .balansert:
-            replacementBase = 2
-        case .sjansen:
-            replacementBase = 3
-        }
-        let replacementCount = min(4, max(1, replacementBase + (offset % 2)))
-        let rotated = rotatedNumbers(from: weightedNumbers, by: offset * 2 + 1)
-
-        var rotatedIndex = 0
-        for replacementIndex in 0..<replacementCount {
-            while rotatedIndex < rotated.count {
-                let candidate = rotated[rotatedIndex]
-                rotatedIndex += 1
-
-                guard !adjusted.contains(candidate) else { continue }
-
-                let replaceableIndices = adjusted.indices.filter { !protectedNumbers.contains(adjusted[$0]) }
-                guard !replaceableIndices.isEmpty else { break }
-
-                let targetIndex = replaceableIndices[(replacementIndex + offset) % replaceableIndices.count]
-                adjusted[targetIndex] = candidate
-                break
-            }
-        }
-
-        let uniqueSorted = Array(Set(adjusted)).sorted()
-        if uniqueSorted.count == 7 {
-            return uniqueSorted
-        }
-
-        var fallback = uniqueSorted
-        for number in rotated where fallback.count < 7 && !fallback.contains(number) {
-            fallback.append(number)
-        }
-        for number in 1...34 where fallback.count < 7 && !fallback.contains(number) {
-            fallback.append(number)
-        }
-        return fallback.sorted()
     }
 
     private static func suggestedRow(

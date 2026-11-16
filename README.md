@@ -224,3 +224,8 @@ Spilleoversikt now includes recorded monthly stake, change versus the prior mont
 Validation: 112 tests in 20 suites passed, including month/year boundaries, exclusion of future dates and prizes, reduction arithmetic and correction updates. Result bundle: /private/tmp/Lotto-Systems/Logs/Test/Test-Lotto-2026.11.14_08-02-46-+0100.xcresult. Device Hub rendered the recorded NOK 100 month, NOK 1200 same-level annual comparison, NOK 75 / 900 at 25% reduction, and the chart. Existing test ledger data was left unchanged.
 
 The in-app manual (Settings > Hjelp > Åpne brukermanual) was rewritten to cover the new workflows and limitations. It explicitly distinguishes saving from actual delivery, corrects the old claim that saving a suggestion meant it was delivered, explains ordinary vs first-prize probabilities, system expansion, prize pending state, spending curves and lower-stake scenarios, local monthly-limit reminders, backup and iCloud. Hjelp also visibly states the app has no ads or commission from Norsk Tipping and is independent, not affiliated with or approved by Norsk Tipping. The manual explains historical statistics do not predict the next draw. Manual text changes were build-checked successfully after the test suite; no additional logic tests were added for prose-only changes. No TestFlight upload or App Store change was made.
+
+
+## Huskeliste – neste endringsrunde
+
+- [ ] 16. november 2026: Legg til «Huk av alle» i Lotto → Forslag til rekker, tilsvarende valget i Vikinglotto og Eurojackpot. Brukeren må i dag huke av hver Lotto-rekke enkeltvis. Ta dette sammen med neste appendring; ikke lag en egen build for dette nå.

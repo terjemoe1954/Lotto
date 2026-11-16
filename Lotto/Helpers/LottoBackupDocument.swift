@@ -163,9 +163,10 @@ struct LottoBackupResult: Codable {
     var nr6: Int
     var nr7: Int
     var weekNr: Int
+    var systemMembershipJSON: String? = nil
 
     private enum CodingKeys: String, CodingKey {
-        case dato, nr1, nr2, nr3, nr4, nr5, nr6, nr7, weekNr
+        case dato, nr1, nr2, nr3, nr4, nr5, nr6, nr7, weekNr, systemMembershipJSON
     }
 
     init(_ result: Result) {
@@ -178,6 +179,7 @@ struct LottoBackupResult: Codable {
         nr6 = result.nr6
         nr7 = result.nr7
         weekNr = result.weekNr
+        systemMembershipJSON = result.systemMembershipJSON
     }
 
     nonisolated init(
@@ -213,6 +215,7 @@ struct LottoBackupResult: Codable {
         nr6 = try container.decode(Int.self, forKey: .nr6)
         nr7 = try container.decode(Int.self, forKey: .nr7)
         weekNr = try container.decode(Int.self, forKey: .weekNr)
+        systemMembershipJSON = try container.decodeIfPresent(String.self, forKey: .systemMembershipJSON)
     }
 
     nonisolated func encode(to encoder: Encoder) throws {
@@ -226,10 +229,11 @@ struct LottoBackupResult: Codable {
         try container.encode(nr6, forKey: .nr6)
         try container.encode(nr7, forKey: .nr7)
         try container.encode(weekNr, forKey: .weekNr)
+        try container.encodeIfPresent(systemMembershipJSON, forKey: .systemMembershipJSON)
     }
 
     func makeModel() -> Result {
-        Result(
+        let model = Result(
             dato: dato,
             nr1: nr1,
             nr2: nr2,
@@ -240,6 +244,8 @@ struct LottoBackupResult: Codable {
             nr7: nr7,
             weekNr: weekNr
         )
+        model.systemMembershipJSON = systemMembershipJSON
+        return model
     }
 }
 

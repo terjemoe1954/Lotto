@@ -1,0 +1,13 @@
+Build 16 – Lever alle og Mine registreringer
+
+Ta gjerne en full sikkerhetskopi før du prøver endring og sletting. Bruk noen testrekker eller testposter. Endringer synkroniseres via iCloud.
+
+• Ukesrapport: merk én rekke som Levert og fjern markeringen. Kontroller at dette reagerer raskere, også med systemspill.
+• Lever alle: kontroller uke og valgte spill, bekreft, og sjekk at bare de aktuelle ikke-leverte rekkene markeres. Gjenta: innsatsen skal ikke dobles.
+• Mine registreringer: velg måned og spill, og prøv Endre rekke. Dersom rekken var levert, skal markeringen flyttes til den korrigerte rekken uten dobbel innsats.
+• Prøv endring av helt system. Delrekker som også tilhører et annet system skal beholdes. Nye delrekker får ingen nye Levert-markeringer.
+• Prøv sletting av en testrekke med Bare lagrede rekker, og kontroller at leveringshistorikken beholdes. Prøv Slett og fjern Levert, og kontroller at beregnet innsats og gevinst tas ut av Spilleoversikt.
+• Endre og slett en manuell testpost. Offisielle trekninger skal beholdes.
+• Kontroller endringene på den andre enheten og at systemmerkingen fortsatt stemmer.
+
+Full interaktiv simulator-kontroll var ikke mulig fordi Device Hub ikke tok imot automatiske trykk. 131 funksjonstester passerte. Dette registrerer bare i appen; ingen spill sendes til Norsk Tipping.

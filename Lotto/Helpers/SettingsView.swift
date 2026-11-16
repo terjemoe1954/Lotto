@@ -429,7 +429,7 @@ private struct LottoManualView: View {
                         lines: [
                             "Åpne Systemspill. Velg spill, trekningsdato, antall hovedtall og eventuelle tilleggstall. Velg deretter de faktiske tallene. Antall enkeltrekker følger av alle kombinasjonene; pris og sjanse oppdateres når antall tall endres.",
                             "Appen støtter fulle systemer med inntil 2000 enkeltrekker. Lotto bruker 8–12 tall. Vikinglotto bruker 6–12 hovedtall og 1–5 vikingtall. Eurojackpot-beregneren bruker 5–10 hovedtall og 2–12 stjernetall. Minst én tallgruppe må være større enn i en vanlig rekke.",
-                            "Lagre systemet lagrer alle nye delrekker som vanlige enkeltrekker. Allerede lagrede kombinasjoner for samme spill og dato hoppes over. Systemet beholdes ikke som en egen samlet, redigerbar kupong. Levering og betaling skjer hos Norsk Tipping.",
+                            "Lagre systemet lagrer nye delrekker og merker både nye og allerede eksisterende delrekker med hele systemtallutvalget. Overlapp telles ikke dobbelt. Tallutvalget vises i Ukesrapport og sist lagrede utvalg beholdes i Systemspill. Levering og betaling skjer hos Norsk Tipping.",
                             "Hver delrekke kan få sin ordinære premie. Et system kan derfor ha flere premier i ulike premiegrupper, som summeres i gevinstoversikten. Reduserte systemer, garantier og andelsfordeling støttes ikke. Beregneren lover ikke at alle kombinasjoner kan kjøpes som et enkelt system hos Norsk Tipping."
                         ]
                     )
@@ -475,18 +475,38 @@ private struct LottoManualView: View {
                         title: "Statistikk, forslag og favoritttall",
                         lines: [
                             "Statistikken viser frekvens, intervaller og historiske trekninger. Forslag kan bygge på historiske intervaller, samme ukenummer i tidligere år, frekvens eller tilfeldig variasjon. Intervalltreff er en beskrivelse av historikken, ikke en prognose.",
-                            "Favoritttall er valgfritt. Når funksjonen er på, brukes favorittene i én favorittrekke, og manglende tall fylles inn. Ingen modus eller favoritt gir høyere vinnersjanse for en enkeltrekke.",
+                            "Favoritttall er valgfritt. Når funksjonen er på, brukes favorittene i én ekstra favorittrekke i tillegg til antallet forslag du velger. Manglende tall fylles inn, og like rekker tas ikke med to ganger. Ingen modus eller favoritt gir høyere vinnersjanse for en enkeltrekke.",
                             "Lagre lagrer et forslag i appen. Kontroller / endre eller Levere åpner rekken for kontroll før lagring. Print eller deling lager en rapport, ikke en innlevering."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Endre og slette registreringer",
+                        lines: [
+                            "Mine registreringer på forsiden samler egne rekker, systemspill og manuelle poster. Velg måned og eventuelt spill. Offisielle trekninger endres ikke her.",
+                            "Endre rekke korrigerer tall eller trekningsdato. En eventuell Levert-markering flyttes til den korrigerte rekken, slik at innsatsen ikke telles dobbelt. En endret delrekke frikobles fra systemet.",
+                            "Endre system erstatter hele systemet. Delrekker som er del av andre systemer beholdes. Øvrige gamle delrekker fjernes, også om de først ble lagret enkeltvis. Nye delrekker får ingen ny Levert-markering. Du velger om gamle leveringsmarkeringer skal fjernes.",
+                            "Ved sletting velger du mellom å bare fjerne lagrede rekker og å også fjerne Levert. Fjerner du Levert, tas beregnet innsats og gevinst ut av Spilleoversikt. Manuelle beløp kan endres eller slettes separat.",
+                            "Endringer gjelder andre enheter via iCloud. Ta en full sikkerhetskopi før større opprydding. Ingen av disse handlingene endrer faktisk innleverte spill hos Norsk Tipping."
                         ]
                     )
 
                     manualSection(
                         title: "Ukesrapport, eksport og backup",
                         lines: [
-                            "Ukesrapport samler rekker for valgt uke og spill. Du kan velge rekker, markere dem som faktisk levert og eksportere eller skrive ut en oversikt. Systemets delrekker tas med som enkeltrekker.",
+                            "Ukesrapport samler rekker for valgt uke og spill. Lever alle merker alle ikke-leverte rekker i denne uken og valgte spill etter en bekreftelse. Det sender ikke spill til Norsk Tipping. Du kan velge rekker, markere dem som faktisk levert og eksportere eller skrive ut en oversikt. Nye systemers delrekker merkes med det opprinnelige tallutvalget. Hele systemet vises i rapporten og i en egen oversikt bakerst i PDF-utskriften. Excel har en kolonne med systemtall.",
                             "Lotto-listen kan eksporteres som CSV til regneark eller TXT til tekstbehandling. Valgte rekker brukes ved eksport; uten valg brukes rekkene i gjeldende filter.",
                             "Full sikkerhetskopi inneholder trekninger, egne rekker, leveringsmarkeringer, favoritter, manuelle spilleposter og innstillinger. Bare trekninger er et eget begrenset eksportvalg. Ta en full kopi før større endringer.",
                             "Offentlige premietabeller lagres lokalt og hentes på nytt på andre enheter. Påminnelsen om månedsgrense er lokal. Eksporterte filer må du selv oppbevare og dele på en trygg måte."
+                        ]
+                    )
+
+                    manualSection(
+                        title: "Systemtall og systemforslag",
+                        lines: [
+                            "Systemspill kan foreslå et tallutvalg basert på historisk frekvens eller et tilfeldig utvalg. Du kan endre tallene selv før lagring. Ingen metode gjør neste trekning mer forutsigbar.",
+                            "Siste lagrede systemtall beholdes på denne enheten når du åpner Systemspill igjen. Ukesrapporten viser hele systemtallutvalget og merker delrekkene. En rekke kan være del av flere systemer, men samme rekke på samme dato telles bare én gang.",
+                            "Eldre systemer ble lagret som enkeltrekker uten systeminformasjon, og kan ikke merkes sikkert i ettertid. Du kan registrere det opprinnelige systemtallutvalget på samme dato igjen: da merkes eksisterende delrekker uten å lage dubletter."
                         ]
                     )
 

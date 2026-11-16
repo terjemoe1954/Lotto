@@ -35,10 +35,11 @@ struct InternationalSuggestionsView: View {
                     }.pickerStyle(.segmented)
                     Text(mode.description).font(.footnote).foregroundStyle(.secondary)
                     if !favorites.mainNumbers.isEmpty || !favorites.extraNumbers.isEmpty {
-                        Text("Én favorittrekke med: \(favorites.mainNumbers.map(String.init).joined(separator: ", "))" + (favorites.extraNumbers.isEmpty ? "" : " + " + favorites.extraNumbers.map(String.init).joined(separator: ", ")))
+                        Text("Én ekstra favorittrekke med: \(favorites.mainNumbers.map(String.init).joined(separator: ", "))" + (favorites.extraNumbers.isEmpty ? "" : " + " + favorites.extraNumbers.map(String.init).joined(separator: ", ")))
                             .font(.footnote).foregroundStyle(.secondary)
                     }
-                    Stepper("Antall rekker: \(count)", value: $count, in: 1...20)
+                    Text("Aktive favoritttall gir én ekstra rekke utover antallet forslag.").font(.footnote).foregroundStyle(.secondary)
+                    Stepper("Antall forslag: \(count)", value: $count, in: 1...20)
                     if mode != .random {
                         LabeledContent("Intervalltoleranse", value: "±\(tolerance.formatted(.number.precision(.fractionLength(1)))) dager")
                         Text("Toleranse og utelatelse av lengste intervall følger innstillingene for Lotto.")
@@ -62,7 +63,7 @@ struct InternationalSuggestionsView: View {
                             .disabled(batch.rows.allSatisfy { isSaved($0, date: batch.date) })
                         ForEach(Array(batch.rows.enumerated()), id: \.element.id) { index, row in
                             VStack(alignment: .leading, spacing: 10) {
-                                Text("Rekke \(index + 1)").font(.caption).foregroundStyle(.secondary)
+                                Text(row.isFavorite ? "Favorittrekke · ekstra" : "Rekke \(index + 1)").font(.caption).foregroundStyle(.secondary)
                                 Text(row.text).font(.headline).monospacedDigit()
                                 if batch.mode != .random {
                                     Text(candidateText(row, batch: batch)).font(.caption).foregroundStyle(.secondary)

@@ -61,13 +61,14 @@ struct NumberPredictionForm: View {
                     .pickerStyle(.segmented)
 
                     if !favorites.isEmpty {
-                        Text("Én favorittrekke med: \(favorites.map(String.init).joined(separator: ", "))")
+                        Text("Én ekstra favorittrekke med: \(favorites.map(String.init).joined(separator: ", "))")
                             .font(.footnote).foregroundStyle(.secondary)
                         if favorites.count == 7 {
-                            Text("Alle sju tall er faste. Da finnes bare én unik rekke.").font(.footnote).foregroundStyle(.secondary)
+                            Text("Favorittrekken kommer i tillegg til forslagene.").font(.footnote).foregroundStyle(.secondary)
                         }
                     }
-                    Stepper("Antall rekker: \(suggestionCount)", value: $suggestionCount, in: suggestionCountRange)
+                    Text("Aktive favoritttall gir én ekstra rekke utover antallet forslag.").font(.footnote).foregroundStyle(.secondary)
+                    Stepper("Antall forslag: \(suggestionCount)", value: $suggestionCount, in: suggestionCountRange)
 
                     Text(suggestionMode.description)
                         .font(.caption)

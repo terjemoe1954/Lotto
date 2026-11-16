@@ -61,6 +61,7 @@ import SwiftData
         } catch { context.rollback(); throw error }
         defaults.removeObject(forKey: WeeklyLotteryDelivery.storageKey)
         defaults.removeObject(forKey: "transferredResultKeys")
+        defaults.removeObject(forKey: "system.lastSelections.v1")
     }
     private static func canonical(_ snapshot: LottoBackupSnapshot) throws -> Data {
         // Ignore export time and database fetch order, but compare every backed-up value.

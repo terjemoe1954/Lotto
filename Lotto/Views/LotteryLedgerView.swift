@@ -130,7 +130,7 @@ struct LotteryLedgerView: View {
 
 extension LotteryLedgerRecord: Identifiable { }
 
-private struct LotteryLedgerEditor: View {
+struct LotteryLedgerEditor: View {
     let record: LotteryLedgerRecord
     let existing: LotteryLedgerEntry?
     @Environment(\.modelContext) private var context

@@ -20,9 +20,15 @@ enum LotterySystem {
         return result
     }
     static func rowCount(game: LotteryReportGame, main: Int, extra: Int) -> Int {
-        combinations(Array(1...max(1, main)), choose: mainCount(game)).count *
-        combinations(extra == 0 ? [] : Array(1...extra), choose: extraCount(game)).count
+        func choose(_ n: Int, _ k: Int) -> Int {
+            guard n >= 0, k >= 0, k <= n, n <= 50 else { return 0 }
+            let k = min(k, n - k)
+            guard k > 0 else { return 1 }
+            return (1...k).reduce(1) { $0 * (n - k + $1) / $1 }
+        }
+        return choose(main, mainCount(game)) * choose(extra, extraCount(game))
     }
+
     static func validation(game: LotteryReportGame, main: [Int], extra: [Int], date: Date) -> String? {
         let minimum = mainCount(game), minimumExtra = extraCount(game)
         let maximumMain = game == .eurojackpot ? 10 : 12
@@ -45,21 +51,44 @@ enum LotterySystem {
             }
         }
     }
-    @MainActor static func save(_ rows: [LotteryReportRow], context: ModelContext) throws -> Int {
+    @MainActor static func save(_ rows: [LotteryReportRow], context: ModelContext, system: LotterySystemSelection? = nil) throws -> Int {
+        let lotto = try context.fetch(FetchDescriptor<Result>())
+        let international = try context.fetch(FetchDescriptor<InternationalLotteryEntry>())
         let known = Set(WeeklyLotteryReport.rows(lotto: try context.fetch(FetchDescriptor<Result>()),
                      international: try context.fetch(FetchDescriptor<InternationalLotteryEntry>())).map(\.id))
         let additions = WeeklyLotteryReport.normalized(rows).filter { !known.contains($0.id) }
         do {
+            if let system {
+                let wanted = Set(rows.map(\.id))
+                for row in lotto {
+                    let key = WeeklyLotteryReport.rows(lotto: [row], international: []).first!.id
+                    if wanted.contains(key) { row.systemMembershipJSON = LotterySystemSelection.encode(LotterySystemSelection.decode(row.systemMembershipJSON) + [system]) }
+                }
+                for row in international where !row.isDraw {
+                    guard let key = WeeklyLotteryReport.rows(lotto: [], international: [row]).first?.id, wanted.contains(key) else { continue }
+                    row.systemMembershipJSON = LotterySystemSelection.encode(LotterySystemSelection.decode(row.systemMembershipJSON) + [system])
+                }
+            }
             for row in additions {
                 if row.game == .lotto {
                     let n = row.mainNumbers
-                    context.insert(Result(dato: row.date, nr1: n[0], nr2: n[1], nr3: n[2], nr4: n[3], nr5: n[4], nr6: n[5], nr7: n[6], weekNr: LottoDateSupport.weekNumber(for: row.date)))
+                    let entry = Result(dato: row.date, nr1: n[0], nr2: n[1], nr3: n[2], nr4: n[3], nr5: n[4], nr6: n[5], nr7: n[6], weekNr: LottoDateSupport.weekNumber(for: row.date))
+                    entry.systemMembershipJSON = system.flatMap { LotterySystemSelection.encode([$0]) }
+                    context.insert(entry)
                 } else if let game = InternationalGame(rawValue: row.game.rawValue) {
-                    context.insert(InternationalLotteryEntry(game: game, isDraw: false, date: row.date, main: row.mainNumbers, extra: row.extraNumbers))
+                    let entry = InternationalLotteryEntry(game: game, isDraw: false, date: row.date, main: row.mainNumbers, extra: row.extraNumbers)
+                    entry.systemMembershipJSON = system.flatMap { LotterySystemSelection.encode([$0]) }
+                    context.insert(entry)
                 }
             }
             try context.save()
             return additions.count
         } catch { context.rollback(); throw error }
     }
+    @MainActor static func saveSystem(game: LotteryReportGame, main: [Int], extra: [Int], date: Date, context: ModelContext) throws -> Int {
+        if let error = validation(game: game, main: main, extra: extra, date: date) { throw LottoBackupValidationError.invalid(error) }
+        let selection = LotterySystemSelection(gameID: game.rawValue, dateText: LotteryCalendar.text(date), main: main.sorted(), extra: extra.sorted())
+        return try save(rows(game: game, main: main, extra: extra, date: date), context: context, system: selection)
+    }
+
 }

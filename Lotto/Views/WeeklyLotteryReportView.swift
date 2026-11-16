@@ -4,14 +4,42 @@ import UniformTypeIdentifiers
 import PDFKit
 
 struct WeeklyLotteryReportView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @Query private var lottoRows: [Result]
-    @Query private var internationalRows: [InternationalLotteryEntry]
     @State private var year = LotteryReportWeek(date: .now).year
     @State private var weekNumber = LotteryReportWeek(date: .now).number
     @State private var games = Set(LotteryReportGame.allCases)
+    var body: some View { WeeklyLotteryReportSource(year: $year, weekNumber: $weekNumber, games: $games) }
+}
+
+/// Only fetch own rows in this ISO week. Delivery-only changes do not rebuild this source.
+private struct WeeklyLotteryReportSource: View {
+    @Binding var year: Int
+    @Binding var weekNumber: Int
+    @Binding var games: Set<LotteryReportGame>
+    @Query private var lottoRows: [Result]
+    @Query private var internationalRows: [InternationalLotteryEntry]
+    init(year: Binding<Int>, weekNumber: Binding<Int>, games: Binding<Set<LotteryReportGame>>) {
+        _year = year; _weekNumber = weekNumber; _games = games
+        let week = LotteryReportWeek(year: year.wrappedValue, number: weekNumber.wrappedValue)
+        let start = week.start
+        let end = LotteryReportWeek.calendar.date(byAdding: .day, value: 7, to: start)!
+        _lottoRows = Query(filter: #Predicate<Result> { $0.dato >= start && $0.dato < end })
+        _internationalRows = Query(filter: #Predicate<InternationalLotteryEntry> { !$0.isDraw && $0.date >= start && $0.date < end })
+    }
+    var body: some View {
+        WeeklyLotteryReportContent(year: $year, weekNumber: $weekNumber, games: $games,
+            baseRows: WeeklyLotteryReport.rows(lotto: lottoRows, international: internationalRows))
+    }
+}
+
+private struct WeeklyLotteryReportContent: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @Binding var year: Int
+    @Binding var weekNumber: Int
+    @Binding var games: Set<LotteryReportGame>
+    let baseRows: [LotteryReportRow]
     @Query private var deliveryChanges: [LotteryDeliveryChange]
+    @State private var confirmDeliverAll = false
     @AppStorage("weeklyReport.hideRegistered") private var hideRegistered = false
     @State private var selected = Set<String>()
     @State private var exporting = false
@@ -19,16 +47,22 @@ struct WeeklyLotteryReportView: View {
     @State private var preview: WeeklyPDFPreviewItem?
     @State private var message: String?
 
-    private var week: LotteryReportWeek { LotteryReportWeek(year: year, number: weekNumber) }
-    private var allRows: [LotteryReportRow] {
-        LotteryDeliverySync.applying(WeeklyLotteryReport.rows(lotto: lottoRows, international: internationalRows),
-            records: deliveryChanges.map(\.record))
+    init(year: Binding<Int>, weekNumber: Binding<Int>, games: Binding<Set<LotteryReportGame>>, baseRows: [LotteryReportRow]) {
+        _year = year; _weekNumber = weekNumber; _games = games; self.baseRows = baseRows
+        _deliveryChanges = Query()
     }
-    private var eligible: [LotteryReportRow] { WeeklyLotteryReport.filtered(allRows, week: week, games: games) }
-    private var visible: [LotteryReportRow] { eligible.filter { !hideRegistered || !$0.isRegistered } }
-    private var chosen: [LotteryReportRow] { visible.filter { selected.contains($0.id) } }
+
+    private var week: LotteryReportWeek { LotteryReportWeek(year: year, number: weekNumber) }
+    private var visibleRows: [LotteryReportRow] {
+        LotteryDeliverySync.applying(baseRows.filter { games.contains($0.game) }, records: deliveryChanges.map(\.record))
+            .filter { !hideRegistered || !$0.isRegistered }
+    }
 
     var body: some View {
+        // Build delivery state once per render, rather than repeatedly sorting the full archive.
+        let eligible = LotteryDeliverySync.applying(baseRows.filter { games.contains($0.game) }, records: deliveryChanges.map(\.record))
+        let visible = eligible.filter { !hideRegistered || !$0.isRegistered }
+        let chosen = visible.filter { selected.contains($0.id) }
         NavigationStack {
             List {
                 Section("Velg uke") {
@@ -51,6 +85,10 @@ struct WeeklyLotteryReportView: View {
                 Section {
                     Toggle("Skjul registrerte rekker", isOn: $hideRegistered)
                     LabeledContent("Registrert hos Norsk Tipping", value: "\(eligible.filter(\.isRegistered).count) av \(eligible.count)")
+                    Button("Lever alle", systemImage: "checkmark.square") { confirmDeliverAll = true }
+                        .disabled(eligible.allSatisfy(\.isRegistered))
+                    Text("Merker alle ikke-leverte rekker i valgt uke og valgte spill som levert. Dette registrerer bare i appen og sender ikke spill til Norsk Tipping.")
+                        .font(.footnote).foregroundStyle(.secondary)
                     HStack {
                         Button("Velg alle") { selectAll() }.disabled(visible.isEmpty)
                         Spacer()
@@ -73,6 +111,20 @@ struct WeeklyLotteryReportView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                let systemSelections = Array(Set(eligible.flatMap(\.systems))).sorted { $0.id < $1.id }
+                if !systemSelections.isEmpty {
+                    Section("Lagrede systemer i valgt uke") {
+                        ForEach(Array(systemSelections.enumerated()), id: \.element.id) { index, system in
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("System \(index + 1) · \(LotteryReportGame(rawValue: system.gameID)?.title ?? system.gameID) · \(system.dateText)").font(.headline)
+                                Text(system.numbersText).monospacedDigit()
+                                let savedCount = eligible.filter { $0.systems.contains(system) }.count
+                                let total = LotterySystem.rowCount(game: LotteryReportGame(rawValue: system.gameID) ?? .lotto, main: system.main.count, extra: system.extra.count)
+                                Text("\(savedCount) av \(total) delrekker finnes i rapportgrunnlaget. Overlappende rekker telles bare én gang.").font(.footnote).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
                 ForEach(LotteryReportGame.allCases) { game in
                     let rows = visible.filter { $0.game == game }
                     if !rows.isEmpty {
@@ -92,7 +144,16 @@ struct WeeklyLotteryReportView: View {
             .onChange(of: weekNumber) { _, _ in selectAll() }
             .onChange(of: games) { _, _ in selectAll() }
             .onChange(of: hideRegistered) { _, _ in selected.formIntersection(Set(visible.map(\.id))) }
-            .onChange(of: allRows.map(\.id)) { _, _ in selected.formIntersection(Set(visible.map(\.id))) }
+            .onChange(of: visible.map(\.id)) { _, _ in selected.formIntersection(Set(visible.map(\.id))) }
+            .confirmationDialog("Merke alle som levert?", isPresented: $confirmDeliverAll, titleVisibility: .visible) {
+                Button("Merk \(eligible.filter { !$0.isRegistered }.count) rekker som levert") {
+                    do {
+                        try LotteryDeliverySync.set(true, keys: Set(eligible.filter { !$0.isRegistered }.map(\.id)), context: context)
+                        if hideRegistered { selected.removeAll() }
+                    } catch { context.rollback(); message = "Kunne ikke lagre markeringene: \(error.localizedDescription)" }
+                }
+                Button("Avbryt", role: .cancel) { }
+            } message: { Text("Gjelder \(week.title) og valgte spill. Bruk dette bare for rekker du faktisk har levert. Innsatsen tas med i Spilleoversikt, og markeringen synkroniseres via iCloud.") }
             .fileExporter(isPresented: $exporting, document: document,
                           contentType: WeeklyWorkbookDocument.contentType, defaultFilename: week.filename) { result in
                 switch result {
@@ -116,6 +177,9 @@ struct WeeklyLotteryReportView: View {
                         .font(.title3).foregroundStyle(row.isRegistered ? Color.gray : Color.accentColor)
                     VStack(alignment: .leading, spacing: 5) {
                         Text(WeeklyLotteryReport.dateText(row.date)).font(.caption)
+                        ForEach(row.systems) { system in
+                            Label("System: " + system.numbersText, systemImage: "square.grid.3x3").font(.caption).foregroundStyle(.secondary)
+                        }
                         Text(row.mainText + (row.extraNumbers.isEmpty ? "" : "  +  " + row.extraText))
                             .font(.headline).monospacedDigit()
                     }
@@ -141,7 +205,7 @@ struct WeeklyLotteryReportView: View {
         .padding(.vertical, 6)
         .listRowBackground(row.isRegistered ? Color.secondary.opacity(0.06) : Color.clear)
     }
-    private func selectAll() { selected = Set(visible.map(\.id)) }
+    private func selectAll() { selected = Set(visibleRows.map(\.id)) }
 }
 
 struct WeeklyWorkbookDocument: FileDocument {

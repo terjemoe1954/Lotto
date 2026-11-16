@@ -46,12 +46,24 @@ import SwiftData
     /// Retain the first complete original record, without touching draws or marks.
     static func uniqueOwnRows(in source: LottoBackupSnapshot) -> LottoBackupSnapshot {
         var copy = source
-        var seen = Set<Key>()
-        copy.results = source.results.filter { seen.insert(Key($0.makeModel())).inserted }
+        var national: [LottoBackupResult] = [], nationalKeys: [Key: Int] = [:]
+        for row in source.results {
+            let key = Key(row.makeModel())
+            if let index = nationalKeys[key] {
+                national[index].systemMembershipJSON = LotterySystemSelection.merging(national[index].systemMembershipJSON, row.systemMembershipJSON)
+            } else { nationalKeys[key] = national.count; national.append(row) }
+        }
+        copy.results = national
         copy.internationalEntries = source.internationalEntries.map { entries in
-            entries.filter { row in
-                row.isDraw || seen.insert(Key(game: row.gameID, date: row.date, main: row.mainNumbers, extra: row.extraNumbers)).inserted
+            var result: [InternationalLotteryRecord] = [], keys: [Key: Int] = [:]
+            for row in entries {
+                if row.isDraw { result.append(row); continue }
+                let key = Key(game: row.gameID, date: row.date, main: row.mainNumbers, extra: row.extraNumbers)
+                if let index = keys[key] {
+                    result[index].systemMembershipJSON = LotterySystemSelection.merging(result[index].systemMembershipJSON, row.systemMembershipJSON)
+                } else { keys[key] = result.count; result.append(row) }
             }
+            return result
         }
         return copy
     }

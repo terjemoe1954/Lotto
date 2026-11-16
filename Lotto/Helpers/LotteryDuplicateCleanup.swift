@@ -77,8 +77,22 @@ import SwiftData
         guard try Data(contentsOf: file) == bytes else { throw CocoaError(.fileReadCorruptFile) }
 
         do {
-            for row in plan.lotto { context.delete(row) }
-            for row in plan.international { context.delete(row) }
+            let removedNational = Set(plan.lotto.map(\.persistentModelID))
+            let removedInternational = Set(plan.international.map(\.persistentModelID))
+            let keptNational = Dictionary(grouping: try context.fetch(FetchDescriptor<Result>()).filter { !removedNational.contains($0.persistentModelID) }, by: { LotteryOwnRowStore.Key($0) })
+            let keptInternational = Dictionary(grouping: try context.fetch(FetchDescriptor<InternationalLotteryEntry>()).filter { !$0.isDraw && !removedInternational.contains($0.persistentModelID) }, by: { LotteryOwnRowStore.Key($0) })
+            for row in plan.lotto {
+                if let kept = keptNational[LotteryOwnRowStore.Key(row)]?.first {
+                    kept.systemMembershipJSON = LotterySystemSelection.merging(kept.systemMembershipJSON, row.systemMembershipJSON)
+                }
+                context.delete(row)
+            }
+            for row in plan.international {
+                if let kept = keptInternational[LotteryOwnRowStore.Key(row)]?.first {
+                    kept.systemMembershipJSON = LotterySystemSelection.merging(kept.systemMembershipJSON, row.systemMembershipJSON)
+                }
+                context.delete(row)
+            }
             try context.save()
         } catch { context.rollback(); throw error }
         return Outcome(removed: plan.counts, backupURL: file)

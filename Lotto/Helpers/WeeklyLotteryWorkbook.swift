@@ -2,7 +2,7 @@ import Foundation
 
 /// Minimal OOXML workbook for on-device exports; no network or third-party runtime required.
 enum WeeklyLotteryWorkbook {
-    static let headers = ["Spill", "År", "Uke", "Trekningsdato"] + (1...7).map { "Hovedtall \($0)" } + ["Vikingtall", "Stjernetall 1", "Stjernetall 2", "Registrert"]
+    static let headers = ["Spill", "År", "Uke", "Trekningsdato"] + (1...7).map { "Hovedtall \($0)" } + ["Vikingtall", "Stjernetall 1", "Stjernetall 2", "Registrert", "Systemtall"]
     static func data(rows: [LotteryReportRow]) -> Data {
         let ordered = WeeklyLotteryReport.normalized(rows)
         let heading = headers.enumerated().map { text($0.element, column: $0.offset, row: 1, style: 1) }.joined()
@@ -20,15 +20,16 @@ enum WeeklyLotteryWorkbook {
                 cells += number(Double(value), column: item.game == .vikinglotto ? 11 : 12 + offset, row: row)
             }
             cells += text(item.isRegistered ? "Ja" : "Nei", column: 14, row: row)
+            cells += text(item.systems.map { $0.numbersText }.joined(separator: " | "), column: 15, row: row)
             body += "<row r=\"\(row)\" ht=\"22\" customHeight=\"1\">\(cells)</row>"
         }
         let last = max(1, ordered.count + 1)
         let sheet = """
         <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
         <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-        <dimension ref="A1:O\(last)"/><sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
-        <cols><col min="1" max="1" width="17" customWidth="1"/><col min="2" max="3" width="9" customWidth="1"/><col min="4" max="4" width="18" customWidth="1"/><col min="5" max="15" width="16" customWidth="1"/></cols>
-        <sheetData>\(body)</sheetData><autoFilter ref="A1:O\(last)"/>
+        <dimension ref="A1:P\(last)"/><sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+        <cols><col min="1" max="1" width="17" customWidth="1"/><col min="2" max="3" width="9" customWidth="1"/><col min="4" max="4" width="18" customWidth="1"/><col min="5" max="15" width="16" customWidth="1"/><col min="16" max="16" width="72" customWidth="1"/></cols>
+        <sheetData>\(body)</sheetData><autoFilter ref="A1:P\(last)"/>
         <pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/><pageSetup orientation="landscape" paperSize="9"/>
         </worksheet>
         """

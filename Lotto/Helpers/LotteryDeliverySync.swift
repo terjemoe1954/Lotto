@@ -45,13 +45,26 @@ enum LotteryDeliverySync {
         }
     }
     static func set(_ registered: Bool, keys: Set<String>, context: ModelContext, now: Date = .now) throws {
-        let existing = latest(try context.fetch(FetchDescriptor<LotteryDeliveryChange>()).map(\.record))
+        try stage(registered, keys: keys, context: context, now: now)
+        try context.save()
+    }
+    /// Stage marks with row edits/deletions so the caller can commit everything atomically.
+    static func stage(_ registered: Bool, keys: Set<String>, context: ModelContext, now: Date = .now) throws {
+        let wanted = Array(keys.filter { !$0.isEmpty })
+        guard !wanted.isEmpty else { return }
+        let descriptor: FetchDescriptor<LotteryDeliveryChange>
+        if wanted.count == 1, let key = wanted.first {
+            descriptor = FetchDescriptor(predicate: #Predicate { $0.rowKey == key })
+        } else {
+            // One scan is cheaper than constructing a very large IN predicate for systems.
+            descriptor = FetchDescriptor()
+        }
+        let existing = latest(try context.fetch(descriptor).filter { keys.contains($0.rowKey) }.map(\.record))
         for key in keys where !key.isEmpty {
             guard existing[key]?.registered != registered else { continue }
             let time = max(now, (existing[key]?.changedAt ?? .distantPast).addingTimeInterval(0.001))
             context.insert(LotteryDeliveryChange(rowKey: key, registered: registered, changedAt: time))
         }
-        try context.save()
     }
     /// Legacy marks are older than any real user action, even when imported on a second device later.
     static func migrateLegacy(rows: [LotteryReportRow], context: ModelContext, defaults: UserDefaults = .standard) throws {

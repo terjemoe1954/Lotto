@@ -12,6 +12,9 @@ struct LotterySystemView: View {
     @State private var extra = Set<Int>()
     @State private var date = Date()
     @State private var message: String?
+    @State private var savedSystem: LotterySystemSelection?
+    @State private var useFrequency = true
+    @AppStorage("system.lastSelections.v1") private var lastSelections = ""
     private var count: Int { LotterySystem.rowCount(game: game, main: mainCount, extra: extraCount) }
     private var error: String? { LotterySystem.validation(game: game, main: main.sorted(), extra: extra.sorted(), date: date) }
     var body: some View {
@@ -26,6 +29,11 @@ struct LotterySystemView: View {
                     }
                     Text("Du velger antall tall; antall rekker følger av alle kombinasjonene. Maks 2000 rekker i appen. Pris etter dagens rekkepris; kontroller pris hos Norsk Tipping.").font(.footnote)
                 }
+                Section("Forslag til systemtall") {
+                    Toggle("Bruk historisk frekvens", isOn: $useFrequency)
+                    Button("Foreslå systemtall", systemImage: "wand.and.stars") { suggest() }
+                    Text("Frekvens gir oftere brukte tall større vekt; avslått gir tilfeldig utvalg. Ingen av metodene forutsier neste trekning eller øker vinnersjansen. Forslaget kan endres før lagring.").font(.footnote).foregroundStyle(.secondary)
+                }
                 LotteryOddsSummary(game: game, main: mainCount, extra: extraCount)
                 Section("Hovedtall: \(main.count) av \(mainCount)") { numberGrid(maximum: game == .lotto ? 34 : (game == .vikinglotto ? 48 : 50), selection: $main, limit: mainCount) }
                 if game != .lotto {
@@ -39,26 +47,67 @@ struct LotterySystemView: View {
                         let rows = LotterySystem.rows(game: game, main: main.sorted(), extra: extra.sorted(), date: date)
                         guard !rows.isEmpty else { return }
                         do {
-                            let added = try LotterySystem.save(rows, context: context)
-                            message = "Lagret \(added) nye enkeltrekker. \(rows.count - added) var allerede lagret. Du finner dem under Mine rekker / Liste og i Ukesrapport. Merk dem som Levert først når du faktisk har levert hos Norsk Tipping."
+                            let added = try LotterySystem.saveSystem(game: game, main: main.sorted(), extra: extra.sorted(), date: date, context: context)
+                            let selection = LotterySystemSelection(gameID: game.rawValue, dateText: LotteryCalendar.text(date), main: main.sorted(), extra: extra.sorted())
+                            savedSystem = selection
+                            lastSelections = LotterySystemSelection.encode(LotterySystemSelection.decode(lastSelections).filter { $0.gameID != game.rawValue } + [selection]) ?? ""
+                            message = "Lagret systemet og \(added) nye enkeltrekker. \(rows.count - added) var allerede lagret. Du finner hele systemtallutvalget og merkede delrekker i Ukesrapport. Tallene blir stående her. Merk dem som Levert først når du faktisk har levert hos Norsk Tipping."
                         } catch { message = error.localizedDescription }
                     }.disabled(error != nil || main.count != mainCount || extra.count != extraCount)
-                    Text("Systemet lagres som enkeltrekker, uten egen systemgruppe. Hver rekke kontrolleres mot sin trekning og får sin ordinære premie. Gevinster summeres i Mine gevinster. Dette er ikke innlevering eller betaling, og omfatter ikke reduserte systemer eller andelsfordeling.").font(.footnote)
+                    Text("Systemet lagres som merkede enkeltrekker med det opprinnelige tallutvalget. En delrekke kan høre til flere systemer, men telles bare én gang per trekning. Hver rekke kontrolleres mot sin trekning og får sin ordinære premie. Gevinster summeres i Mine gevinster. Dette er ikke innlevering eller betaling, og omfatter ikke reduserte systemer eller andelsfordeling.").font(.footnote)
+                }
+                if let savedSystem {
+                    Section("Sist lagrede system") {
+                        Text(savedSystem.dateText).foregroundStyle(.secondary)
+                        Text(savedSystem.numbersText).font(.headline).monospacedDigit()
+                        Text("\(LotterySystem.rowCount(game: game, main: savedSystem.main.count, extra: savedSystem.extra.count)) enkeltrekker. Tallene er lagret; dette er ikke innlevering hos Norsk Tipping.").font(.footnote)
+                    }
                 }
             }
             .navigationTitle("Systemspill")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Ferdig") { dismiss() } } }
             .onAppear { game = initialGame; reset() }
             .onChange(of: game) { _, _ in reset() }
-            .onChange(of: mainCount) { _, _ in main = [] }
-            .onChange(of: extraCount) { _, _ in extra = [] }
+            .onChange(of: mainCount) { _, value in if main.count > value { main = Set(main.sorted().prefix(value)) } }
+            .onChange(of: extraCount) { _, value in if extra.count > value { extra = Set(extra.sorted().prefix(value)) } }
             .alert("Systemspill", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) { Button("OK", role: .cancel) {} } message: { Text(message ?? "") }
         }
     }
     private func reset() {
         mainCount = LotterySystem.mainCount(game) + 1; extraCount = LotterySystem.extraCount(game)
-        main = []; extra = []
+        main = []; extra = []; savedSystem = nil
         date = game == .lotto ? LottoDateSupport.nextSaturday(onOrAfter: .now) : InternationalGame(rawValue: game.rawValue)!.nextDraw(onOrAfter: .now)
+        if let saved = LotterySystemSelection.decode(lastSelections).first(where: { $0.gameID == game.rawValue }),
+           let savedDate = LotteryCalendar.date(saved.dateText),
+           LotterySystem.validation(game: game, main: saved.main, extra: saved.extra, date: savedDate) == nil {
+            mainCount = saved.main.count; extraCount = saved.extra.count
+            main = Set(saved.main); extra = Set(saved.extra); date = savedDate; savedSystem = saved
+        }
+    }
+    private func suggest() {
+        do {
+            let jackpots = try context.fetch(FetchDescriptor<JackPot>())
+            let international = try context.fetch(FetchDescriptor<InternationalLotteryEntry>()).filter(\.isDraw)
+            let target = LotteryCalendar.day(date)
+            var mainFrequency: [Int: Int] = [:], extraFrequency: [Int: Int] = [:]
+            if game == .lotto {
+                mainFrequency = LottoStatistics.frequency(for: jackpots.filter { LotteryCalendar.day($0.dato) < target })
+            } else {
+                for draw in international where draw.gameID == game.rawValue && LotteryCalendar.day(draw.date) < target {
+                    for n in draw.mainNumbers { mainFrequency[n, default: 0] += 1 }
+                    for n in draw.extraNumbers { extraFrequency[n, default: 0] += 1 }
+                }
+            }
+            var generator = SystemRandomNumberGenerator()
+            func pick(_ maximum: Int, _ count: Int, _ frequency: [Int: Int]) -> Set<Int> {
+                let peak = Double(max(1, frequency.values.max() ?? 0))
+                return Set(LotteryWeightedSampling.sample((1...maximum).map {
+                    (number: $0, weight: useFrequency ? 1 + 4 * Double(frequency[$0] ?? 0) / peak : 1)
+                }, count: count, using: &generator))
+            }
+            main = pick(game == .lotto ? 34 : (game == .vikinglotto ? 48 : 50), mainCount, mainFrequency)
+            extra = extraCount == 0 ? [] : pick(game == .vikinglotto ? 5 : 12, extraCount, extraFrequency)
+        } catch { message = "Kunne ikke lage forslag: \(error.localizedDescription)" }
     }
     private func numberGrid(maximum: Int, selection: Binding<Set<Int>>, limit: Int) -> some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 42))]) {

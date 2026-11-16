@@ -4,6 +4,9 @@ enum WeeklyLotteryPDF {
     static func data(rows: [LotteryReportRow], week: LotteryReportWeek) -> Data {
         let ordered = WeeklyLotteryReport.normalized(rows)
         let pages = WeeklyLotteryReport.pages(ordered)
+        let systems = Array(Set(ordered.flatMap(\.systems))).sorted { $0.id < $1.id }
+        let summaryPages = systems.isEmpty ? 0 : (systems.count + 4) / 5
+        let pageCount = pages.count + summaryPages
         let renderer = UIGraphicsPDFRenderer(bounds: CGRect(x: 0, y: 0, width: 595, height: 842))
         return renderer.pdfData { context in
             for (pageIndex, page) in pages.enumerated() {
@@ -32,13 +35,35 @@ enum WeeklyLotteryPDF {
                         context.cgContext.strokePath()
                     }
                     draw("\(pageIndex * WeeklyLotteryReport.rowsPerPage + index + 1)", x: 48, y: y, width: 25, size: 10)
+                    let labels = row.systems.prefix(2).compactMap { item in systems.firstIndex(of: item).map { "S\($0 + 1)" } }.joined(separator: ", ") + (row.systems.count > 2 ? ", +\(row.systems.count - 2)" : "")
                     draw(row.game.title, x: 73, y: y, width: 88, size: 10)
+                    if !labels.isEmpty { draw(labels, x: 73, y: y + 11, width: 88, size: 7) }
                     draw(WeeklyLotteryReport.dateText(row.date), x: 161, y: y, width: 78, size: 10)
                     draw(row.mainText, x: 239, y: y, width: 187, size: 10, monospaced: true)
                     draw(row.extraNumbers.isEmpty ? "-" : row.extraText, x: 426, y: y, width: 141, size: 10, monospaced: true)
                 }
-                draw("\(week.title) | Side \(pageIndex + 1) av \(pages.count)", x: 28, y: 793, width: 539, size: 9)
-                draw("OK = registrert hos Norsk Tipping", x: 28, y: 774, width: 539, size: 9)
+                draw("\(week.title) | Side \(pageIndex + 1) av \(pageCount)", x: 28, y: 793, width: 539, size: 9)
+                draw(systems.isEmpty ? "OK = registrert hos Norsk Tipping" : "OK = registrert hos Norsk Tipping. S1, S2 … viser til systemoversikten bakerst.", x: 28, y: 774, width: 539, size: 9)
+            }
+            for page in 0..<summaryPages {
+                context.beginPage()
+                draw("Systemoversikt", x: 28, y: 28, width: 539, size: 22, bold: true)
+                draw(week.title + " | " + week.dateRange, x: 28, y: 60, width: 539, size: 11)
+                draw("Tallutvalget i hvert system. Delrekker står på de foregående sidene.", x: 28, y: 84, width: 539, size: 10)
+                for offset in 0..<5 {
+                    let index = page * 5 + offset
+                    guard index < systems.count else { break }
+                    let item = systems[index], y = CGFloat(124 + offset * 124)
+                    draw("S\(index + 1) | \(LotteryReportGame(rawValue: item.gameID)?.title ?? item.gameID) | \(item.dateText)", x: 28, y: y, width: 539, size: 12, bold: true)
+                    draw("Hovedtall: " + item.main.map(String.init).joined(separator: "  "), x: 28, y: y + 26, width: 539, size: 11)
+                    if !item.extra.isEmpty { draw("Tilleggstall: " + item.extra.map(String.init).joined(separator: "  "), x: 28, y: y + 50, width: 539, size: 11) }
+                    let game = LotteryReportGame(rawValue: item.gameID) ?? .lotto
+                    let total = LotterySystem.rowCount(game: game, main: item.main.count, extra: item.extra.count)
+                    let included = ordered.filter { $0.systems.contains(item) }.count
+                    draw("\(included) av \(total) delrekker er med i dette eksportutvalget.", x: 28, y: y + 76, width: 539, size: 10)
+                }
+                draw("Overlappende delrekker telles bare én gang. Rapporten leverer ikke spill.", x: 28, y: 774, width: 539, size: 9)
+                draw("\(week.title) | Side \(pages.count + page + 1) av \(pageCount)", x: 28, y: 793, width: 539, size: 9)
             }
         }
     }

@@ -64,6 +64,7 @@ final class InternationalLotteryEntry {
     var date: Date = Date()
     var mainNumbers: [Int] = []
     var extraNumbers: [Int] = []
+    var systemMembershipJSON: String? = nil
 
     init(game: InternationalGame, isDraw: Bool, date: Date, main: [Int], extra: [Int]) {
         self.gameID = game.rawValue
@@ -76,7 +77,7 @@ final class InternationalLotteryEntry {
         mainNumbers.map(String.init).joined(separator: " – ") + "  +  " + extraNumbers.map(String.init).joined(separator: " – ")
     }
     var archiveRecord: InternationalLotteryRecord {
-        InternationalLotteryRecord(gameID: gameID, isDraw: isDraw, date: date, mainNumbers: mainNumbers, extraNumbers: extraNumbers)
+        InternationalLotteryRecord(gameID: gameID, isDraw: isDraw, date: date, mainNumbers: mainNumbers, extraNumbers: extraNumbers, systemMembershipJSON: systemMembershipJSON)
     }
 }
 
@@ -86,6 +87,7 @@ nonisolated struct InternationalLotteryRecord: Codable, Equatable, Sendable {
     var date: Date
     var mainNumbers: [Int]
     var extraNumbers: [Int]
+    var systemMembershipJSON: String? = nil
 
     @MainActor var key: String {
         "\(gameID)|\(isDraw)|\(LotteryCalendar.text(date))|\(mainNumbers.sorted())|\(extraNumbers.sorted())"
@@ -95,7 +97,9 @@ nonisolated struct InternationalLotteryRecord: Codable, Equatable, Sendable {
               game.validation(main: mainNumbers, extra: extraNumbers, date: date) == nil else {
             throw InternationalLotteryError.invalidDraw(LotteryCalendar.text(date))
         }
-        return InternationalLotteryEntry(game: game, isDraw: isDraw, date: date, main: mainNumbers, extra: extraNumbers)
+        let model = InternationalLotteryEntry(game: game, isDraw: isDraw, date: date, main: mainNumbers, extra: extraNumbers)
+        model.systemMembershipJSON = isDraw ? nil : systemMembershipJSON
+        return model
     }
 }
 

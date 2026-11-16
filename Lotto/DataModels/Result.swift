@@ -20,6 +20,7 @@ class Result {
     var nr5: Int = 0
     var nr6: Int = 0
     var nr7: Int = 0
+    var systemMembershipJSON: String? = nil
     /// Week number for the submission.
     var weekNr: Int = 0
     
