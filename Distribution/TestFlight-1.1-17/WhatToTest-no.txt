@@ -1,0 +1,8 @@
+Lotto 1.1 (17) – Lagre alle forslag
+
+• Åpne Lotto → Forslag. «Lagre alle» lagrer alle nye forslag på valgt dato, inkludert ekstra favorittrekke.
+• Lagre én rekke først, og bruk deretter «Lagre alle». Den første rekken skal ikke bli doblet.
+• Når alle viste forslag er lagret, skal knappen være deaktivert.
+• Åpne forslag på nytt. Nye forslag kan dukke opp; allerede lagrede rekker skal hoppes over.
+• Kontroller egne rekker på iPhone og iPad etter iCloud-synkronisering.
+• Lagring merker ikke rekkene som levert hos Norsk Tipping.

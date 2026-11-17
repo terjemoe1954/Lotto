@@ -138,6 +138,13 @@ struct NumberPredictionForm: View {
                         Text("Ingen forslag tilgjengelig for denne datoen ennå.")
                             .foregroundStyle(.secondary)
                     } else {
+                        Button("Lagre alle \(suggestedRows.count) rekker") {
+                            saveSuggestedRows(suggestedRows)
+                        }
+                        .disabled(suggestedRows.allSatisfy { isRowUnavailable($0) })
+                        Text("Lagrer alle forslag, inkludert eventuell ekstra favorittrekke. Rekker som allerede er brukt for datoen hoppes over. Levering skjer hos Norsk Tipping.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                         ForEach(Array(suggestedRows.enumerated()), id: \.element.id) { index, row in
                             SuggestedRowCard(
                                 index: index + 1,
@@ -268,37 +275,42 @@ struct NumberPredictionForm: View {
     }
 
     private func saveSuggestedRow(_ row: SuggestedRow) {
-        guard row.numbers.count == 7 else {
-            errorMessage = "Forslaget inneholder ikke 7 gyldige tall."
+        saveSuggestedRows([row])
+    }
+
+    private func saveSuggestedRows(_ rows: [SuggestedRow]) {
+        let available = rows.filter { !isRowUnavailable($0) }
+        guard !available.isEmpty else {
+            saveMessage = "Rekkene er allerede brukt for valgt dato."
+            errorMessage = nil
+            return
+        }
+        guard available.allSatisfy({ $0.numbers.count == 7 }) else {
+            errorMessage = "Et forslag inneholder ikke 7 gyldige tall."
             return
         }
 
-        guard !isRowUnavailable(row) else {
-            errorMessage = "Denne rekken er allerede brukt for valgt dato."
-            return
-        }
-
-        let result = Result(
-            dato: LottoDateSupport.normalize(selectedDate),
-            nr1: row.numbers[0],
-            nr2: row.numbers[1],
-            nr3: row.numbers[2],
-            nr4: row.numbers[3],
-            nr5: row.numbers[4],
-            nr6: row.numbers[5],
-            nr7: row.numbers[6],
-            weekNr: LottoDateSupport.weekNumber(for: selectedDate)
-        )
-
+        var inserted: [Result] = []
         do {
-            try LotteryOwnRowStore.insert(result, context: context)
+            for row in available {
+                let result = Result(
+                    dato: LottoDateSupport.normalize(selectedDate),
+                    nr1: row.numbers[0], nr2: row.numbers[1], nr3: row.numbers[2],
+                    nr4: row.numbers[3], nr5: row.numbers[4], nr6: row.numbers[5], nr7: row.numbers[6],
+                    weekNr: LottoDateSupport.weekNumber(for: selectedDate)
+                )
+                try LotteryOwnRowStore.insert(result, context: context)
+                inserted.append(result)
+            }
             try context.save()
-            handledRowKeys.insert(rowKey(for: row, drawDate: selectedDate))
-            saveMessage = "Rekke \(row.numbers.map(String.init).joined(separator: " ")) er lagret."
+            for row in available {
+                handledRowKeys.insert(rowKey(for: row, drawDate: selectedDate))
+            }
+            saveMessage = "Lagret \(inserted.count) nye rekker for valgt dato."
             errorMessage = nil
         } catch {
-            if result.modelContext != nil { context.delete(result) }
-            errorMessage = "Kunne ikke lagre rekken: \(error.localizedDescription)"
+            for result in inserted { context.delete(result) }
+            errorMessage = "Kunne ikke lagre rekkene: \(error.localizedDescription)"
         }
     }
 

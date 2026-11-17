@@ -228,4 +228,8 @@ The in-app manual (Settings > Hjelp > Åpne brukermanual) was rewritten to cover
 
 ## Huskeliste – neste endringsrunde
 
-- [ ] 16. november 2026: Legg til «Huk av alle» i Lotto → Forslag til rekker, tilsvarende valget i Vikinglotto og Eurojackpot. Brukeren må i dag huke av hver Lotto-rekke enkeltvis. Ta dette sammen med neste appendring; ikke lag en egen build for dette nå.
+- [x] 16. november 2026: Legg til «Huk av alle» i Lotto → Forslag til rekker, tilsvarende valget i Vikinglotto og Eurojackpot. Brukeren må i dag huke av hver Lotto-rekke enkeltvis. Ta dette sammen med neste appendring; ikke lag en egen build for dette nå.
+
+Utført 17. november 2026: Lotto-forslag har nå «Lagre alle», som i de andre spillene. Allerede brukte rekker hoppes over, og eventuell ekstra favorittrekke tas med.
+
+TestFlight 1.1 (17): «Lagre alle» i Lotto-forslag, inkludert ekstra favorittrekke. Allerede lagrede rekker hoppes over. Simulator 17.11.2026: én rekke + samlet lagring ga 6 unike rekker; ny åpning med fire nye forslag ga 10 unike rekker, ingen dubletter og ingen levert-markeringer. Kontrollert i separat app uten iCloud.
